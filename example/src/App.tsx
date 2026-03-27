@@ -5,6 +5,7 @@ import {
   createTrack,
   type TimelineEditorBehavior,
   type TimelineTrackHeaderRenderArgs,
+  useTimelineTransport,
 } from '@minijay/timeline';
 import '@minijay/timeline/timeline.css';
 import './app.css';
@@ -84,8 +85,10 @@ const trackHeader = ({ track, defaultContent }: TimelineTrackHeaderRenderArgs) =
 export default function App() {
   const [tracks, setTracks] = useState(initialTracks);
   const [clips, setClips] = useState(initialClips);
-  const [currentTime, setCurrentTime] = useState(1.5);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const transport = useTimelineTransport({
+    duration: 30,
+    initialTime: 1.5,
+  });
 
   const behavior = useMemo<TimelineEditorBehavior>(
     () => ({
@@ -159,20 +162,17 @@ export default function App() {
         <TimelineEditor
           tracks={tracks}
           clips={clips}
-          currentTime={currentTime}
+          currentTime={transport.currentTime}
           totalDuration={30}
-          isPlaying={isPlaying}
+          isPlaying={transport.isPlaying}
           behavior={behavior}
           renderTrackHeader={trackHeader}
           onTracksChange={setTracks}
           onClipsChange={setClips}
-          onSeek={setCurrentTime}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onStop={() => {
-            setIsPlaying(false);
-            setCurrentTime(0);
-          }}
+          onSeek={transport.seek}
+          onPlay={transport.play}
+          onPause={transport.pause}
+          onStop={transport.stop}
         />
       </section>
 

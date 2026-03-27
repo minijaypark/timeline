@@ -1,4 +1,5 @@
 export { TimelineEditor } from './timeline/TimelineEditor';
+export { useTimelineTransport } from './timeline/useTimelineTransport';
 export {
   CLIP_TYPE,
   createClip,
