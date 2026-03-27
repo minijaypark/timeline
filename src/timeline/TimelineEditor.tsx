@@ -1,23 +1,16 @@
 import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
-  useEffect,
   useMemo,
-  useRef,
-  useState,
 } from 'react';
 import './TimelineEditor.css';
-import type {
-  TimelineClip,
-  TimelineEditorProps,
-  TimelineRegion,
-} from './types';
+import type { TimelineEditorProps, TimelineRegion } from './types';
 import { useControllableState } from './useControllableState';
+import { useTimelineInteractions } from './useTimelineInteractions';
+import { useTimelineViewport } from './useTimelineViewport';
 import {
   clamp,
   clipLeftPx,
-  clipTimelineEnd,
-  clipTimelineStart,
   clipVisibleDuration,
   clipWidthPx,
   formatTime,
@@ -30,31 +23,8 @@ import {
   isTrackAudible,
   regionWidth,
   setExclusiveSolo,
-  snapTime,
-  updateClipList,
   updateTrackList,
 } from './utils';
-
-type InteractionState =
-  | {
-      type: 'move';
-      clipId: string;
-      originClip: TimelineClip;
-      originTrackId: string;
-      startClientX: number;
-      startClientY: number;
-    }
-  | {
-      type: 'resize-left' | 'resize-right';
-      clipId: string;
-      originClip: TimelineClip;
-      startClientX: number;
-    }
-  | {
-      type: 'region';
-      startTime: number;
-      rulerRect: DOMRect;
-    };
 
 export const TimelineEditor = ({
   tracks,
@@ -103,187 +73,50 @@ export const TimelineEditor = ({
     defaultValue: null as TimelineRegion | null,
     onChange: onRegionChange,
   });
-  const [viewportWidth, setViewportWidth] = useState(0);
-  const [interaction, setInteraction] = useState<InteractionState | null>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const tracksPanelRef = useRef<HTMLDivElement>(null);
 
   const pxPerSec = resolvedZoom * basePxPerSec;
   const gridSize = getGridInterval(pxPerSec);
   const labelInterval = getLabelInterval(pxPerSec);
-  const effectiveDuration = Math.max(totalDuration, 0.001);
-  const contentWidth = Math.max(
-    effectiveDuration * pxPerSec,
-    Math.max(0, viewportWidth - leftColumnWidth),
-  );
-  const visibleTrackCount = tracks.length + (video ? 1 : 0);
-  const canvasWidth = leftColumnWidth + contentWidth;
+  const { viewportRef, canvasWidth, contentWidth } = useTimelineViewport({
+    leftColumnWidth,
+    pxPerSec,
+    totalDuration,
+  });
   const clipsByTrack = useMemo(() => groupClipsByTrack(clips), [clips]);
   const soloTrackIds = useMemo(() => getSoloTrackIds(tracks), [tracks]);
-
-  useEffect(() => {
-    const element = viewportRef.current;
-    if (!element) {
-      return;
-    }
-
-    const observer = new ResizeObserver(([entry]) => {
-      setViewportWidth(entry.contentRect.width);
+  const { tracksPanelRef, handleRulerPointerDown, startClipMove, startClipResize } =
+    useTimelineInteractions({
+      clips,
+      gridSize,
+      onClipsChange,
+      onSeek,
+      pxPerSec,
+      resolvedRegion,
+      rowHeight,
+      setResolvedRegion,
+      snapToGrid,
+      totalDuration,
+      tracks,
     });
-
-    observer.observe(element);
-    setViewportWidth(element.clientWidth);
-
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!interaction) {
-      return;
-    }
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (interaction.type === 'region') {
-        const px = clamp(
-          event.clientX - interaction.rulerRect.left,
-          0,
-          interaction.rulerRect.width,
-        );
-        const time = clamp(px / pxPerSec, 0, totalDuration);
-        setResolvedRegion({
-          start: Math.min(interaction.startTime, time),
-          end: Math.max(interaction.startTime, time),
-        });
-        return;
-      }
-
-      if (!onClipsChange) {
-        return;
-      }
-
-      const deltaX = (event.clientX - interaction.startClientX) / pxPerSec;
-
-      if (interaction.type === 'resize-left') {
-        const nextStart = snapTime(
-          clamp(
-            interaction.originClip.start + deltaX,
-            0,
-            interaction.originClip.end - 0.05,
-          ),
-          gridSize,
-          snapToGrid,
-        );
-        onClipsChange(
-          updateClipList(clips, interaction.clipId, {
-            start: clamp(nextStart, 0, interaction.originClip.end - 0.05),
-          }),
-        );
-        return;
-      }
-
-      if (interaction.type === 'resize-right') {
-        const nextEnd = snapTime(
-          clamp(
-            interaction.originClip.end + deltaX,
-            interaction.originClip.start + 0.05,
-            interaction.originClip.duration,
-          ),
-          gridSize,
-          snapToGrid,
-        );
-        onClipsChange(
-          updateClipList(clips, interaction.clipId, {
-            end: clamp(
-              nextEnd,
-              interaction.originClip.start + 0.05,
-              interaction.originClip.duration,
-            ),
-          }),
-        );
-        return;
-      }
-
-      if (!tracksPanelRef.current) {
-        return;
-      }
-
-      if (interaction.type !== 'move') {
-        return;
-      }
-
-      const panelRect = tracksPanelRef.current.getBoundingClientRect();
-      const rowIndex = clamp(
-        Math.floor((event.clientY - panelRect.top) / rowHeight),
-        0,
-        Math.max(tracks.length - 1, 0),
-      );
-      const nextTrackId = tracks[rowIndex]?.id ?? interaction.originTrackId;
-      const nextStartOffset = snapTime(
-        Math.max(
-          interaction.originClip.startOffset + deltaX,
-          -interaction.originClip.start,
-        ),
-        gridSize,
-        snapToGrid,
-      );
-
-      onClipsChange(
-        updateClipList(clips, interaction.clipId, {
-          startOffset: nextStartOffset,
-          trackId: nextTrackId,
-        }),
-      );
-    };
-
-    const handlePointerUp = () => {
-      if (
-        interaction.type === 'region' &&
-        resolvedRegion &&
-        Math.abs(resolvedRegion.end - resolvedRegion.start) < 0.01
-      ) {
-        setResolvedRegion(null);
-      }
-      setInteraction(null);
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-    };
-  }, [
-    clips,
-    gridSize,
-    interaction,
-    onClipsChange,
-    pxPerSec,
-    resolvedRegion,
-    rowHeight,
-    setResolvedRegion,
-    snapToGrid,
-    totalDuration,
-    tracks,
-  ]);
 
   const rulerTicks = useMemo(() => {
     const ticks: Array<{ left: number; label?: string; strong: boolean }> = [];
     const seconds = contentWidth / pxPerSec;
+
     for (let second = 0; second <= seconds; second += gridSize) {
       const rounded = Math.round(second * 1000) / 1000;
       const strong =
         Math.round(rounded * 1000) %
           Math.round(Math.max(labelInterval, gridSize) * 1000) ===
         0;
+
       ticks.push({
         left: rounded * pxPerSec,
         label: strong ? formatTimelineLabel(rounded) : undefined,
         strong,
       });
     }
+
     return ticks;
   }, [contentWidth, gridSize, labelInterval, pxPerSec]);
 
@@ -298,6 +131,7 @@ export const TimelineEditor = ({
       setResolvedSelection(next);
       return;
     }
+
     setResolvedSelection([clipId]);
   };
 
@@ -305,10 +139,12 @@ export const TimelineEditor = ({
     if (!onTracksChange) {
       return;
     }
+
     const track = tracks.find((item) => item.id === trackId);
     if (!track) {
       return;
     }
+
     onTracksChange(
       updateTrackList(tracks, trackId, { isMuted: !track.isMuted }),
     );
@@ -321,14 +157,17 @@ export const TimelineEditor = ({
     if (!onTracksChange) {
       return;
     }
+
     if (event.altKey || event.metaKey) {
       onTracksChange(setExclusiveSolo(tracks, trackId));
       return;
     }
+
     const track = tracks.find((item) => item.id === trackId);
     if (!track) {
       return;
     }
+
     onTracksChange(updateTrackList(tracks, trackId, { isSolo: !track.isSolo }));
   };
 
@@ -336,24 +175,8 @@ export const TimelineEditor = ({
     if (!onTracksChange) {
       return;
     }
-    onTracksChange(updateTrackList(tracks, trackId, { volume: value }));
-  };
 
-  const handleRulerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const target = event.currentTarget;
-    const rect = target.getBoundingClientRect();
-    const time = clamp(
-      (event.clientX - rect.left + target.scrollLeft) / pxPerSec,
-      0,
-      totalDuration,
-    );
-    onSeek?.(time);
-    setInteraction({
-      type: 'region',
-      startTime: time,
-      rulerRect: rect,
-    });
-    setResolvedRegion({ start: time, end: time });
+    onTracksChange(updateTrackList(tracks, trackId, { volume: value }));
   };
 
   const regionLeft = resolvedRegion ? resolvedRegion.start * pxPerSec : 0;
@@ -548,14 +371,7 @@ export const TimelineEditor = ({
                               return;
                             }
                             event.preventDefault();
-                            setInteraction({
-                              type: 'move',
-                              clipId: clip.id,
-                              originClip: clip,
-                              originTrackId: track.id,
-                              startClientX: event.clientX,
-                              startClientY: event.clientY,
-                            });
+                            startClipMove({ clip, trackId: track.id, event });
                           }}
                         >
                           {fadeInWidth > 0 ? (
@@ -589,11 +405,10 @@ export const TimelineEditor = ({
                                 return;
                               }
                               event.stopPropagation();
-                              setInteraction({
-                                type: 'resize-left',
-                                clipId: clip.id,
-                                originClip: clip,
-                                startClientX: event.clientX,
+                              startClipResize({
+                                clip,
+                                edge: 'resize-left',
+                                event,
                               });
                             }}
                           />
@@ -605,11 +420,10 @@ export const TimelineEditor = ({
                                 return;
                               }
                               event.stopPropagation();
-                              setInteraction({
-                                type: 'resize-right',
-                                clipId: clip.id,
-                                originClip: clip,
-                                startClientX: event.clientX,
+                              startClipResize({
+                                clip,
+                                edge: 'resize-right',
+                                event,
                               });
                             }}
                           />
