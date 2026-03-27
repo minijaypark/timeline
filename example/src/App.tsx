@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import {
-  TimelineEditor,
+  Editor,
   createClip,
   createTrack,
   type TimelineEditorBehavior,
   type TimelineTrackHeaderRenderArgs,
-  useTimelineTransport,
+  useTransport,
 } from '@minijay/timeline';
 import '@minijay/timeline/timeline.css';
 import './app.css';
@@ -135,7 +135,7 @@ export default function App() {
   const [tracks, setTracks] = useState(initialTracks);
   const [clips, setClips] = useState(initialClips);
   const [nextTrackNumber, setNextTrackNumber] = useState(4);
-  const transport = useTimelineTransport({
+  const transport = useTransport({
     duration: TOTAL_DURATION,
     initialTime: 1.5,
   });
@@ -287,7 +287,7 @@ export default function App() {
       </section>
 
       <section className="example-stage">
-        <TimelineEditor
+        <Editor
           tracks={tracks}
           clips={clips}
           currentTime={transport.currentTime}

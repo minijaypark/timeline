@@ -1,6 +1,6 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
 
-export const TimelineRuler = ({
+export const Ruler = ({
   contentWidth,
   onPointerDown,
   ticks,

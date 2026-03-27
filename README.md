@@ -5,7 +5,7 @@
 포함 범위:
 
 - 트랙/클립 데이터 모델
-- `useTimelineTransport` 기반 playback state
+- `useTransport` 기반 playback state
 - 타임라인 ruler, playhead, zoom
 - 클립 선택, 이동, 좌우 trim
 - track mute/solo/volume 편집
@@ -40,11 +40,11 @@ pnpm build
 
 ```tsx
 import {
-  TimelineEditor,
+  Editor,
   createClip,
   createTrack,
   type TimelineEditorBehavior,
-  useTimelineTransport,
+  useTransport,
 } from '@minijay/timeline';
 
 const tracks = [createTrack({ id: 'dialogue', name: 'Dialogue' })];
@@ -79,12 +79,12 @@ const behavior: TimelineEditorBehavior = {
       : { trackId: nextTrackId, timelineStart: nextTimelineStart },
 };
 
-const transport = useTimelineTransport({
+const transport = useTransport({
   duration: 12,
   initialTime: 0,
 });
 
-<TimelineEditor
+<Editor
   tracks={tracks}
   clips={clips}
   totalDuration={12}
@@ -102,7 +102,7 @@ const transport = useTimelineTransport({
 
 ### Extension Points
 
-- `useTimelineTransport`: playback state and controls
+- `useTransport`: playback state and controls
 - `renderClip`: clip body custom rendering
 - `renderTrackHeader`: header lane custom rendering
 - `behavior.selectClips`: selection rule override

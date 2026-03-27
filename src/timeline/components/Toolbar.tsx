@@ -1,6 +1,6 @@
 import { formatTime } from '../utils';
 
-export const TimelineToolbar = ({
+export const Toolbar = ({
   currentTime,
   maxZoom,
   minZoom,

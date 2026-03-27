@@ -2,15 +2,15 @@ import {
   type PointerEvent as ReactPointerEvent,
   useMemo,
 } from 'react';
-import './TimelineEditor.css';
-import { TimelineRuler } from './components/TimelineRuler';
-import { TimelineToolbar } from './components/TimelineToolbar';
-import { TimelineTrackHeaders } from './components/TimelineTrackHeaders';
-import { TimelineTrackRows } from './components/TimelineTrackRows';
+import './editor.css';
+import { Ruler } from './components/Ruler';
+import { Toolbar } from './components/Toolbar';
+import { TrackHeaders } from './components/TrackHeaders';
+import { TrackRows } from './components/TrackRows';
 import type { TimelineEditorProps, TimelineRegion } from './types';
 import { useControllableState } from './useControllableState';
-import { useTimelineInteractions } from './useTimelineInteractions';
-import { useTimelineViewport } from './useTimelineViewport';
+import { useInteractions } from './useInteractions';
+import { useViewport } from './useViewport';
 import {
   formatTimelineLabel,
   getGridInterval,
@@ -21,7 +21,7 @@ import {
   updateTrackList,
 } from './utils';
 
-export const TimelineEditor = ({
+export const Editor = ({
   tracks,
   clips,
   currentTime,
@@ -74,7 +74,7 @@ export const TimelineEditor = ({
   const pxPerSec = resolvedZoom * basePxPerSec;
   const gridSize = getGridInterval(pxPerSec);
   const labelInterval = getLabelInterval(pxPerSec);
-  const { viewportRef, canvasWidth, contentWidth } = useTimelineViewport({
+  const { viewportRef, canvasWidth, contentWidth } = useViewport({
     leftColumnWidth,
     pxPerSec,
     totalDuration,
@@ -82,7 +82,7 @@ export const TimelineEditor = ({
   const clipsByTrack = useMemo(() => groupClipsByTrack(clips), [clips]);
   const soloTrackIds = useMemo(() => getSoloTrackIds(tracks), [tracks]);
   const { tracksPanelRef, handleRulerPointerDown, startClipMove, startClipResize } =
-    useTimelineInteractions({
+    useInteractions({
       behavior,
       clips,
       gridSize,
@@ -199,7 +199,7 @@ export const TimelineEditor = ({
         ['--tl-row-height' as string]: `${rowHeight}px`,
       }}
     >
-      <TimelineToolbar
+      <Toolbar
         currentTime={currentTime}
         maxZoom={maxZoom}
         minZoom={minZoom}
@@ -216,13 +216,13 @@ export const TimelineEditor = ({
         <div className="tl-canvas" style={{ width: canvasWidth }}>
           <div className="tl-corner" />
 
-          <TimelineRuler
+          <Ruler
             contentWidth={contentWidth}
             onPointerDown={handleRulerPointerDown}
             ticks={rulerTicks}
           />
 
-          <TimelineTrackHeaders
+          <TrackHeaders
             onTrackMute={handleTrackMute}
             onTrackSolo={handleTrackSolo}
             onTrackVolume={handleTrackVolume}
@@ -232,7 +232,7 @@ export const TimelineEditor = ({
             video={video}
           />
 
-          <TimelineTrackRows
+          <TrackRows
             clipsByTrack={clipsByTrack}
             contentWidth={contentWidth}
             currentTime={currentTime}

@@ -59,7 +59,7 @@ const renderDefaultTrackHeader = ({
   </>
 );
 
-export const TimelineTrackHeaders = ({
+export const TrackHeaders = ({
   onTrackMute,
   onTrackSolo,
   onTrackVolume,

@@ -51,7 +51,7 @@ const renderDefaultClipContent = (clip: TimelineClip, visibleDuration: number) =
   );
 };
 
-export const TimelineTrackRows = ({
+export const TrackRows = ({
   clipsByTrack,
   contentWidth,
   currentTime,

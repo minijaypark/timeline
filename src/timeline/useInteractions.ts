@@ -48,7 +48,7 @@ type TimelineInteractionState =
       rulerElement: HTMLDivElement;
     };
 
-export const useTimelineInteractions = ({
+export const useInteractions = ({
   behavior,
   clips,
   gridSize,

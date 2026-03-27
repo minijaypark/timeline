@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { TimelineRegion } from './types';
 import { clamp } from './utils';
 
-export const useTimelineTransport = ({
+export const useTransport = ({
   duration,
   initialTime = 0,
   initialPlaying = false,

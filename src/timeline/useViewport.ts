@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-export const useTimelineViewport = ({
+export const useViewport = ({
   leftColumnWidth,
   pxPerSec,
   totalDuration,
