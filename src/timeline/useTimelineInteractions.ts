@@ -12,10 +12,21 @@ import type {
 } from './types';
 import {
   clamp,
+  clipTimelineEnd,
+  clipTimelineStart,
   getTimeFromPointerEvent,
+  getClipFillMode,
+  getClipPlaybackRate,
+  getClipSourceDuration,
+  getClipSourceEnd,
+  getClipSourceStart,
+  getClipTimelineDuration,
   snapTime,
   updateClipList,
 } from './utils';
+
+const MIN_SOURCE_DURATION = 0.05;
+const MIN_TIMELINE_DURATION = 0.05;
 
 type TimelineInteractionState =
   | {
@@ -96,72 +107,116 @@ export const useTimelineInteractions = ({
       const deltaX = (event.clientX - interaction.startClientX) / pxPerSec;
 
       if (interaction.type === 'resize-left') {
-        const nextStart = snapTime(
+        const clip = interaction.originClip;
+        const timelineStart = clipTimelineStart(clip);
+        const timelineEnd = clipTimelineEnd(clip);
+        const sourceStart = getClipSourceStart(clip);
+        const sourceEnd = getClipSourceEnd(clip);
+        const playbackRate = getClipPlaybackRate(clip);
+        const fillMode = getClipFillMode(clip);
+        const minTimelineStart =
+          fillMode === 'trim'
+            ? Math.max(0, timelineStart - sourceStart / playbackRate)
+            : 0;
+        const nextTimelineStart = snapTime(
           clamp(
-            interaction.originClip.start + deltaX,
-            0,
-            interaction.originClip.end - 0.05,
+            timelineStart + deltaX,
+            minTimelineStart,
+            timelineEnd - MIN_TIMELINE_DURATION,
           ),
           gridSize,
           snapToGrid,
         );
+        const nextTimelineDuration = Math.max(
+          MIN_TIMELINE_DURATION,
+          timelineEnd - nextTimelineStart,
+        );
+        const nextSourceStart =
+          fillMode === 'trim'
+            ? clamp(
+                sourceStart +
+                  (nextTimelineStart - timelineStart) * playbackRate,
+                0,
+                sourceEnd - MIN_SOURCE_DURATION,
+              )
+            : sourceStart;
         const nextClip =
           behavior?.resizeClip?.({
-            clip: interaction.originClip,
+            clip,
             clips,
             edge: 'left',
-            nextStart: clamp(nextStart, 0, interaction.originClip.end - 0.05),
+            nextTimelineStart,
+            nextTimelineDuration,
+            nextSourceStart,
+            nextStart: nextSourceStart,
             gridSize,
             pxPerSec,
             snapToGrid,
           }) ?? {
-            start: clamp(nextStart, 0, interaction.originClip.end - 0.05),
+            timelineStart: nextTimelineStart,
+            timelineDuration: nextTimelineDuration,
+            sourceStart: nextSourceStart,
           };
         if (!nextClip) {
           return;
         }
-        onClipsChange(
-          updateClipList(clips, interaction.clipId, nextClip),
-        );
+        onClipsChange(updateClipList(clips, interaction.clipId, nextClip));
         return;
       }
 
       if (interaction.type === 'resize-right') {
-        const nextEnd = snapTime(
-          clamp(
-            interaction.originClip.end + deltaX,
-            interaction.originClip.start + 0.05,
-            interaction.originClip.duration,
-          ),
-          gridSize,
-          snapToGrid,
-        );
+        const clip = interaction.originClip;
+        const timelineStart = clipTimelineStart(clip);
+        const timelineDuration = getClipTimelineDuration(clip);
+        const sourceStart = getClipSourceStart(clip);
+        const sourceEnd = getClipSourceEnd(clip);
+        const sourceDuration = getClipSourceDuration(clip);
+        const playbackRate = getClipPlaybackRate(clip);
+        const fillMode = getClipFillMode(clip);
+        const nextTimelineDuration =
+          fillMode === 'trim'
+            ? clamp(
+                timelineDuration + deltaX,
+                MIN_TIMELINE_DURATION,
+                (sourceDuration - sourceStart) / playbackRate,
+              )
+            : snapTime(
+                clamp(
+                  timelineDuration + deltaX,
+                  MIN_TIMELINE_DURATION,
+                  Math.max(MIN_TIMELINE_DURATION, totalDuration - timelineStart),
+                ),
+                gridSize,
+                snapToGrid,
+              );
+        const nextSourceEnd =
+          fillMode === 'trim'
+            ? clamp(
+                sourceStart + nextTimelineDuration * playbackRate,
+                sourceStart + MIN_SOURCE_DURATION,
+                sourceDuration,
+              )
+            : sourceEnd;
         const nextClip =
           behavior?.resizeClip?.({
-            clip: interaction.originClip,
+            clip,
             clips,
             edge: 'right',
-            nextEnd: clamp(
-              nextEnd,
-              interaction.originClip.start + 0.05,
-              interaction.originClip.duration,
-            ),
+            nextTimelineStart: timelineStart,
+            nextTimelineDuration,
+            nextSourceEnd,
+            nextEnd: nextSourceEnd,
             gridSize,
             pxPerSec,
             snapToGrid,
           }) ?? {
-            end: clamp(
-              nextEnd,
-              interaction.originClip.start + 0.05,
-              interaction.originClip.duration,
-            ),
+            timelineDuration: nextTimelineDuration,
+            sourceEnd: nextSourceEnd,
           };
         if (!nextClip) {
           return;
         }
-        onClipsChange(
-          updateClipList(clips, interaction.clipId, nextClip),
-        );
+        onClipsChange(updateClipList(clips, interaction.clipId, nextClip));
         return;
       }
 
@@ -180,35 +235,33 @@ export const useTimelineInteractions = ({
         Math.max(tracks.length - 1, 0),
       );
       const nextTrackId = tracks[rowIndex]?.id ?? interaction.originTrackId;
-      const nextStartOffset = snapTime(
-        Math.max(
-          interaction.originClip.startOffset + deltaX,
-          -interaction.originClip.start,
-        ),
+      const nextTimelineStart = snapTime(
+        Math.max(clipTimelineStart(interaction.originClip) + deltaX, 0),
         gridSize,
         snapToGrid,
       );
+      const nextStartOffset =
+        nextTimelineStart - getClipSourceStart(interaction.originClip);
       const nextPlacement =
         behavior?.moveClip?.({
           clip: interaction.originClip,
           clips,
           tracks,
           nextTrackId,
+          nextTimelineStart,
           nextStartOffset,
           gridSize,
           pxPerSec,
           snapToGrid,
         }) ?? {
-          startOffset: nextStartOffset,
+          timelineStart: nextTimelineStart,
           trackId: nextTrackId,
         };
       if (!nextPlacement) {
         return;
       }
 
-      onClipsChange(
-        updateClipList(clips, interaction.clipId, nextPlacement),
-      );
+      onClipsChange(updateClipList(clips, interaction.clipId, nextPlacement));
     };
 
     const handlePointerUp = () => {

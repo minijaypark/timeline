@@ -106,6 +106,7 @@ export interface TimelineClipMoveArgs {
   clips: TimelineClip[];
   tracks: TimelineTrack[];
   nextTrackId: string;
+  nextTimelineStart: number;
   nextStartOffset: number;
   gridSize: number;
   pxPerSec: number;
@@ -116,6 +117,10 @@ export interface TimelineClipResizeArgs {
   clip: TimelineClip;
   clips: TimelineClip[];
   edge: 'left' | 'right';
+  nextTimelineStart?: number;
+  nextTimelineDuration?: number;
+  nextSourceStart?: number;
+  nextSourceEnd?: number;
   nextStart?: number;
   nextEnd?: number;
   gridSize: number;
@@ -127,10 +132,17 @@ export interface TimelineEditorBehavior {
   selectClips?: (args: TimelineClipSelectionArgs) => string[];
   moveClip?: (
     args: TimelineClipMoveArgs,
-  ) => { trackId: string; startOffset: number } | null;
+  ) => { trackId: string; timelineStart?: number; startOffset?: number } | null;
   resizeClip?: (
     args: TimelineClipResizeArgs,
-  ) => { start?: number; end?: number } | null;
+  ) => {
+    timelineStart?: number;
+    timelineDuration?: number;
+    sourceStart?: number;
+    sourceEnd?: number;
+    start?: number;
+    end?: number;
+  } | null;
 }
 
 export interface TimelineEditorProps {
