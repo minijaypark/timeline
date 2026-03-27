@@ -4,7 +4,12 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { TimelineClip, TimelineRegion, TimelineTrack } from './types';
+import type {
+  TimelineClip,
+  TimelineEditorBehavior,
+  TimelineRegion,
+  TimelineTrack,
+} from './types';
 import {
   clamp,
   getTimeFromPointerEvent,
@@ -33,6 +38,7 @@ type TimelineInteractionState =
     };
 
 export const useTimelineInteractions = ({
+  behavior,
   clips,
   gridSize,
   onClipsChange,
@@ -45,6 +51,7 @@ export const useTimelineInteractions = ({
   totalDuration,
   tracks,
 }: {
+  behavior?: TimelineEditorBehavior;
   clips: TimelineClip[];
   gridSize: number;
   onClipsChange?: (clips: TimelineClip[]) => void;
@@ -98,10 +105,23 @@ export const useTimelineInteractions = ({
           gridSize,
           snapToGrid,
         );
-        onClipsChange(
-          updateClipList(clips, interaction.clipId, {
+        const nextClip =
+          behavior?.resizeClip?.({
+            clip: interaction.originClip,
+            clips,
+            edge: 'left',
+            nextStart: clamp(nextStart, 0, interaction.originClip.end - 0.05),
+            gridSize,
+            pxPerSec,
+            snapToGrid,
+          }) ?? {
             start: clamp(nextStart, 0, interaction.originClip.end - 0.05),
-          }),
+          };
+        if (!nextClip) {
+          return;
+        }
+        onClipsChange(
+          updateClipList(clips, interaction.clipId, nextClip),
         );
         return;
       }
@@ -116,14 +136,31 @@ export const useTimelineInteractions = ({
           gridSize,
           snapToGrid,
         );
-        onClipsChange(
-          updateClipList(clips, interaction.clipId, {
+        const nextClip =
+          behavior?.resizeClip?.({
+            clip: interaction.originClip,
+            clips,
+            edge: 'right',
+            nextEnd: clamp(
+              nextEnd,
+              interaction.originClip.start + 0.05,
+              interaction.originClip.duration,
+            ),
+            gridSize,
+            pxPerSec,
+            snapToGrid,
+          }) ?? {
             end: clamp(
               nextEnd,
               interaction.originClip.start + 0.05,
               interaction.originClip.duration,
             ),
-          }),
+          };
+        if (!nextClip) {
+          return;
+        }
+        onClipsChange(
+          updateClipList(clips, interaction.clipId, nextClip),
         );
         return;
       }
@@ -151,12 +188,26 @@ export const useTimelineInteractions = ({
         gridSize,
         snapToGrid,
       );
-
-      onClipsChange(
-        updateClipList(clips, interaction.clipId, {
+      const nextPlacement =
+        behavior?.moveClip?.({
+          clip: interaction.originClip,
+          clips,
+          tracks,
+          nextTrackId,
+          nextStartOffset,
+          gridSize,
+          pxPerSec,
+          snapToGrid,
+        }) ?? {
           startOffset: nextStartOffset,
           trackId: nextTrackId,
-        }),
+        };
+      if (!nextPlacement) {
+        return;
+      }
+
+      onClipsChange(
+        updateClipList(clips, interaction.clipId, nextPlacement),
       );
     };
 
@@ -182,6 +233,7 @@ export const useTimelineInteractions = ({
       window.removeEventListener('pointercancel', handlePointerUp);
     };
   }, [
+    behavior,
     clips,
     gridSize,
     interaction,

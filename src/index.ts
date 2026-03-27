@@ -7,9 +7,14 @@ export {
 } from './timeline/types';
 export type {
   TimelineClip,
+  TimelineClipMoveArgs,
   TimelineClipRenderArgs,
+  TimelineClipResizeArgs,
+  TimelineClipSelectionArgs,
+  TimelineEditorBehavior,
   TimelineEditorProps,
   TimelineRegion,
   TimelineTrack,
+  TimelineTrackHeaderRenderArgs,
   TimelineVideoInfo,
 } from './timeline/types';

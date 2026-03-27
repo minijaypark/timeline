@@ -45,7 +45,9 @@ export const TimelineEditor = ({
   region,
   onRegionChange,
   snapToGrid = true,
+  behavior,
   renderClip,
+  renderTrackHeader,
   onTracksChange,
   onClipsChange,
   onSeek,
@@ -81,6 +83,7 @@ export const TimelineEditor = ({
   const soloTrackIds = useMemo(() => getSoloTrackIds(tracks), [tracks]);
   const { tracksPanelRef, handleRulerPointerDown, startClipMove, startClipResize } =
     useTimelineInteractions({
+      behavior,
       clips,
       gridSize,
       onClipsChange,
@@ -119,6 +122,18 @@ export const TimelineEditor = ({
     event: ReactPointerEvent<HTMLDivElement>,
     clipId: string,
   ) => {
+    if (behavior?.selectClips) {
+      setResolvedSelection(
+        behavior.selectClips({
+          clipId,
+          selectedClipIds: resolvedSelection,
+          metaKey: event.metaKey,
+          ctrlKey: event.ctrlKey,
+        }),
+      );
+      return;
+    }
+
     if (event.metaKey || event.ctrlKey) {
       const next = resolvedSelection.includes(clipId)
         ? resolvedSelection.filter((id) => id !== clipId)
@@ -212,6 +227,7 @@ export const TimelineEditor = ({
             onTrackSolo={handleTrackSolo}
             onTrackVolume={handleTrackVolume}
             readOnly={!onTracksChange}
+            renderTrackHeader={renderTrackHeader}
             tracks={tracks}
             video={video}
           />

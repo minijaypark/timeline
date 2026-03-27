@@ -72,6 +72,51 @@ export interface TimelineClipRenderArgs {
   defaultContent: ReactNode;
 }
 
+export interface TimelineTrackHeaderRenderArgs {
+  track: TimelineTrack;
+  isReadOnly: boolean;
+  defaultContent: ReactNode;
+}
+
+export interface TimelineClipSelectionArgs {
+  clipId: string;
+  selectedClipIds: string[];
+  metaKey: boolean;
+  ctrlKey: boolean;
+}
+
+export interface TimelineClipMoveArgs {
+  clip: TimelineClip;
+  clips: TimelineClip[];
+  tracks: TimelineTrack[];
+  nextTrackId: string;
+  nextStartOffset: number;
+  gridSize: number;
+  pxPerSec: number;
+  snapToGrid: boolean;
+}
+
+export interface TimelineClipResizeArgs {
+  clip: TimelineClip;
+  clips: TimelineClip[];
+  edge: 'left' | 'right';
+  nextStart?: number;
+  nextEnd?: number;
+  gridSize: number;
+  pxPerSec: number;
+  snapToGrid: boolean;
+}
+
+export interface TimelineEditorBehavior {
+  selectClips?: (args: TimelineClipSelectionArgs) => string[];
+  moveClip?: (
+    args: TimelineClipMoveArgs,
+  ) => { trackId: string; startOffset: number } | null;
+  resizeClip?: (
+    args: TimelineClipResizeArgs,
+  ) => { start?: number; end?: number } | null;
+}
+
 export interface TimelineEditorProps {
   tracks: TimelineTrack[];
   clips: TimelineClip[];
@@ -96,7 +141,9 @@ export interface TimelineEditorProps {
   region?: TimelineRegion | null;
   onRegionChange?: (region: TimelineRegion | null) => void;
   snapToGrid?: boolean;
+  behavior?: TimelineEditorBehavior;
   renderClip?: (args: TimelineClipRenderArgs) => ReactNode;
+  renderTrackHeader?: (args: TimelineTrackHeaderRenderArgs) => ReactNode;
   onTracksChange?: (tracks: TimelineTrack[]) => void;
   onClipsChange?: (clips: TimelineClip[]) => void;
   onSeek?: (time: number) => void;
