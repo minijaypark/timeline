@@ -1,27 +1,22 @@
 import {
-  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   useMemo,
 } from 'react';
 import './TimelineEditor.css';
+import { TimelineRuler } from './components/TimelineRuler';
+import { TimelineToolbar } from './components/TimelineToolbar';
+import { TimelineTrackHeaders } from './components/TimelineTrackHeaders';
+import { TimelineTrackRows } from './components/TimelineTrackRows';
 import type { TimelineEditorProps, TimelineRegion } from './types';
 import { useControllableState } from './useControllableState';
 import { useTimelineInteractions } from './useTimelineInteractions';
 import { useTimelineViewport } from './useTimelineViewport';
 import {
-  clamp,
-  clipLeftPx,
-  clipVisibleDuration,
-  clipWidthPx,
-  formatTime,
   formatTimelineLabel,
   getGridInterval,
   getLabelInterval,
   getSoloTrackIds,
   groupClipsByTrack,
-  isClipActiveAtTime,
-  isTrackAudible,
-  regionWidth,
   setExclusiveSolo,
   updateTrackList,
 } from './utils';
@@ -179,11 +174,6 @@ export const TimelineEditor = ({
     onTracksChange(updateTrackList(tracks, trackId, { volume: value }));
   };
 
-  const regionLeft = resolvedRegion ? resolvedRegion.start * pxPerSec : 0;
-  const regionPxWidth = resolvedRegion
-    ? regionWidth(resolvedRegion, pxPerSec)
-    : 0;
-
   return (
     <div
       className={['tl-editor', className].filter(Boolean).join(' ')}
@@ -194,261 +184,69 @@ export const TimelineEditor = ({
         ['--tl-row-height' as string]: `${rowHeight}px`,
       }}
     >
-      <div className="tl-toolbar">
-        <div className="tl-toolbarGroup">
-          <button className="tl-button" onClick={onPlay} disabled={!onPlay}>
-            Play
-          </button>
-          <button className="tl-button" onClick={onPause} disabled={!onPause}>
-            Pause
-          </button>
-          <button className="tl-button" onClick={onStop} disabled={!onStop}>
-            Stop
-          </button>
-        </div>
-        <div className="tl-toolbarGroup">
-          <span className="tl-timeValue">{formatTime(currentTime)}</span>
-          <span className="tl-timeValue">/ {formatTime(totalDuration)}</span>
-        </div>
-        <div className="tl-toolbarSpacer" />
-        <div className="tl-toolbarGroup">
-          <span className="tl-zoomValue">
-            {(resolvedZoom * 100).toFixed(0)}%
-          </span>
-          <input
-            className="tl-zoomInput"
-            type="range"
-            min={minZoom}
-            max={maxZoom}
-            step={zoomStep}
-            value={resolvedZoom}
-            onChange={(event) =>
-              setResolvedZoom(Number.parseFloat(event.target.value))
-            }
-          />
-        </div>
-      </div>
+      <TimelineToolbar
+        currentTime={currentTime}
+        maxZoom={maxZoom}
+        minZoom={minZoom}
+        onPause={onPause}
+        onPlay={onPlay}
+        onStop={onStop}
+        onZoomChange={setResolvedZoom}
+        totalDuration={totalDuration}
+        zoom={resolvedZoom}
+        zoomStep={zoomStep}
+      />
 
       <div className="tl-viewport" ref={viewportRef}>
         <div className="tl-canvas" style={{ width: canvasWidth }}>
           <div className="tl-corner" />
 
-          <div className="tl-ruler">
-            <div
-              className="tl-rulerInner"
-              style={{ width: contentWidth }}
-              onPointerDown={handleRulerPointerDown}
-            >
-              {rulerTicks.map((tick) => (
-                <div
-                  key={tick.left}
-                  className="tl-rulerTick"
-                  data-strong={tick.strong}
-                  style={{ left: tick.left }}
-                >
-                  {tick.label}
-                </div>
-              ))}
-            </div>
-          </div>
+          <TimelineRuler
+            contentWidth={contentWidth}
+            onPointerDown={handleRulerPointerDown}
+            ticks={rulerTicks}
+          />
 
-          <div className="tl-trackHeaders">
-            {video ? <div className="tl-videoHeader">{video.name}</div> : null}
-            {tracks.map((track) => (
-              <div key={track.id} className="tl-trackHeader">
-                <div className="tl-trackName">{track.name}</div>
-                <input
-                  className="tl-trackVolume"
-                  type="range"
-                  min={0}
-                  max={2}
-                  step={0.01}
-                  value={track.volume ?? 1}
-                  onChange={(event) =>
-                    handleTrackVolume(
-                      track.id,
-                      Number.parseFloat(event.target.value),
-                    )
-                  }
-                  disabled={!onTracksChange}
-                />
-                <div className="tl-trackActions">
-                  <button
-                    className="tl-trackToggle"
-                    data-active={track.isSolo === true}
-                    onPointerDown={(event) => handleTrackSolo(event, track.id)}
-                    type="button"
-                  >
-                    S
-                  </button>
-                  <button
-                    className="tl-trackToggle"
-                    data-active={track.isMuted === true}
-                    onClick={() => handleTrackMute(track.id)}
-                    type="button"
-                  >
-                    M
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <TimelineTrackHeaders
+            onTrackMute={handleTrackMute}
+            onTrackSolo={handleTrackSolo}
+            onTrackVolume={handleTrackVolume}
+            readOnly={!onTracksChange}
+            tracks={tracks}
+            video={video}
+          />
 
-          <div className="tl-tracksPanel" ref={tracksPanelRef}>
-            <div className="tl-tracksContent" style={{ width: contentWidth }}>
-              {rulerTicks.map((tick) => (
-                <div
-                  key={`grid-${tick.left}`}
-                  className="tl-gridLine"
-                  data-strong={tick.strong}
-                  style={{ left: tick.left }}
-                />
-              ))}
-
-              {resolvedRegion ? (
-                <div
-                  className="tl-region"
-                  style={{ left: regionLeft, width: regionPxWidth }}
-                />
-              ) : null}
-
-              {video ? <div className="tl-trackRow" /> : null}
-
-              {tracks.map((track) => {
-                const rowClips = clipsByTrack.get(track.id) ?? [];
-                const disabled = !isTrackAudible(track, soloTrackIds);
-
-                return (
-                  <div
-                    key={track.id}
-                    className="tl-trackRow"
-                    data-disabled={disabled}
-                  >
-                    {rowClips.map((clip) => {
-                      const selected = resolvedSelection.includes(clip.id);
-                      const active =
-                        isPlaying &&
-                        !disabled &&
-                        isClipActiveAtTime(clip, currentTime);
-                      const width = clipWidthPx(clip, pxPerSec);
-                      const left = clipLeftPx(clip, pxPerSec);
-                      const visibleDuration = clipVisibleDuration(clip);
-                      const fadeInWidth = Math.min(
-                        width,
-                        Math.max(0, (clip.fade?.in?.duration ?? 0) * pxPerSec),
-                      );
-                      const fadeOutWidth = Math.min(
-                        width,
-                        Math.max(0, (clip.fade?.out?.duration ?? 0) * pxPerSec),
-                      );
-
-                      const defaultContent = (
-                        <div className="tl-clipBody">
-                          <span className="tl-clipLabel">{clip.name}</span>
-                          <span className="tl-clipMeta">
-                            {visibleDuration.toFixed(2)}s
-                          </span>
-                        </div>
-                      );
-
-                      return (
-                        <div
-                          key={clip.id}
-                          className="tl-clip"
-                          data-selected={selected}
-                          data-active={active}
-                          style={
-                            {
-                              left,
-                              width,
-                              ['--clip-color' as string]: clip.color,
-                              opacity: disabled ? 0.48 : 1,
-                            } as CSSProperties
-                          }
-                          onPointerDown={(event) => {
-                            handleSelectClip(event, clip.id);
-                            if (!onClipsChange) {
-                              return;
-                            }
-                            event.preventDefault();
-                            startClipMove({ clip, trackId: track.id, event });
-                          }}
-                        >
-                          {fadeInWidth > 0 ? (
-                            <div
-                              className="tl-fadeIn"
-                              style={{ width: fadeInWidth }}
-                            />
-                          ) : null}
-                          {fadeOutWidth > 0 ? (
-                            <div
-                              className="tl-fadeOut"
-                              style={{
-                                width: fadeOutWidth,
-                                left: width - fadeOutWidth,
-                              }}
-                            />
-                          ) : null}
-                          {renderClip
-                            ? renderClip({
-                                clip,
-                                isSelected: selected,
-                                isActive: active,
-                                defaultContent,
-                              })
-                            : defaultContent}
-                          <div
-                            className="tl-clipHandle"
-                            data-side="left"
-                            onPointerDown={(event) => {
-                              if (!onClipsChange) {
-                                return;
-                              }
-                              event.stopPropagation();
-                              startClipResize({
-                                clip,
-                                edge: 'resize-left',
-                                event,
-                              });
-                            }}
-                          />
-                          <div
-                            className="tl-clipHandle"
-                            data-side="right"
-                            onPointerDown={(event) => {
-                              if (!onClipsChange) {
-                                return;
-                              }
-                              event.stopPropagation();
-                              startClipResize({
-                                clip,
-                                edge: 'resize-right',
-                                event,
-                              });
-                            }}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-
-              <div className="tl-playheadLayer">
-                <div
-                  className="tl-playhead"
-                  style={{ left: clamp(currentTime, 0, totalDuration) * pxPerSec }}
-                >
-                  <div className="tl-playheadHead" />
-                  <div className="tl-playheadLine" />
-                </div>
-              </div>
-
-              {tracks.length === 0 ? (
-                <div className="tl-empty">No tracks available</div>
-              ) : null}
-            </div>
-          </div>
+          <TimelineTrackRows
+            clipsByTrack={clipsByTrack}
+            contentWidth={contentWidth}
+            currentTime={currentTime}
+            isPlaying={isPlaying}
+            onClipPointerDown={(event, trackId, clip) => {
+              handleSelectClip(event, clip.id);
+              if (!onClipsChange) {
+                return;
+              }
+              event.preventDefault();
+              startClipMove({ clip, trackId, event });
+            }}
+            onClipResizePointerDown={(event, clip, edge) => {
+              if (!onClipsChange) {
+                return;
+              }
+              event.stopPropagation();
+              startClipResize({ clip, edge, event });
+            }}
+            pxPerSec={pxPerSec}
+            region={resolvedRegion}
+            renderClip={renderClip}
+            selectedClipIds={resolvedSelection}
+            soloTrackIds={soloTrackIds}
+            ticks={rulerTicks}
+            totalDuration={totalDuration}
+            tracks={tracks}
+            tracksPanelRef={tracksPanelRef}
+            videoRow={video !== null}
+          />
         </div>
       </div>
     </div>
