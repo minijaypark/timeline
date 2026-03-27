@@ -1,5 +1,11 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import type { TimelineClip, TimelineRegion, TimelineTrack } from './types';
+import { createClip } from './types';
+import type {
+  TimelineClip,
+  TimelineClipFillMode,
+  TimelineRegion,
+  TimelineTrack,
+} from './types';
 
 export const MIN_CLIP_WIDTH_PX = 18;
 
@@ -44,11 +50,36 @@ export const getLabelInterval = (pxPerSec: number) => {
   return 60;
 };
 
+export const getClipFillMode = (clip: TimelineClip): TimelineClipFillMode =>
+  clip.fillMode ?? (clip.placeholderType ? 'placeholder' : 'trim');
+
+export const getClipPlaybackRate = (clip: TimelineClip) =>
+  clip.playbackRate > 0 ? clip.playbackRate : 1;
+
+export const getClipSourceDuration = (clip: TimelineClip) =>
+  clip.sourceDuration ?? clip.duration;
+
+export const getClipSourceStart = (clip: TimelineClip) =>
+  clip.sourceStart ?? clip.start;
+
+export const getClipSourceEnd = (clip: TimelineClip) =>
+  clip.sourceEnd ?? clip.end;
+
+export const getClipTrimmedSourceDuration = (clip: TimelineClip) =>
+  Math.max(0, getClipSourceEnd(clip) - getClipSourceStart(clip));
+
+export const getClipTimelineDuration = (clip: TimelineClip) => {
+  if (clip.timelineDuration > 0) {
+    return clip.timelineDuration;
+  }
+  return getClipTrimmedSourceDuration(clip) / getClipPlaybackRate(clip);
+};
+
 export const clipTimelineStart = (clip: TimelineClip) =>
-  clip.startOffset + clip.start;
+  clip.timelineStart ?? clip.startOffset + clip.start;
 
 export const clipVisibleDuration = (clip: TimelineClip) =>
-  Math.max(0, clip.end - clip.start);
+  Math.max(0, getClipTimelineDuration(clip));
 
 export const clipTimelineEnd = (clip: TimelineClip) =>
   clipTimelineStart(clip) + clipVisibleDuration(clip);
@@ -90,14 +121,30 @@ export const updateClipList = (
   updates: Partial<TimelineClip>,
 ) =>
   clips.map((clip) =>
-    clip.id === clipId ? { ...clip, ...updates, updatedAt: new Date() } : clip,
+    clip.id === clipId
+      ? normalizeClip({ ...clip, ...updates, updatedAt: new Date() })
+      : clip,
   );
+
+export const normalizeClip = (clip: TimelineClip): TimelineClip =>
+  createClip({
+    ...clip,
+    timelineStart: clip.timelineStart ?? clip.startOffset + clip.start,
+    timelineDuration:
+      clip.timelineDuration ??
+      Math.max(0, clip.end - clip.start) / getClipPlaybackRate(clip),
+    sourceDuration: clip.sourceDuration ?? clip.duration,
+    sourceStart: clip.sourceStart ?? clip.start,
+    sourceEnd: clip.sourceEnd ?? clip.end,
+    playbackRate: getClipPlaybackRate(clip),
+    fillMode: getClipFillMode(clip),
+  });
 
 export const setExclusiveSolo = (tracks: TimelineTrack[], trackId: string) => {
   const target = tracks.find((track) => track.id === trackId);
-  const nextValue = !(target?.isSolo ?? false) || tracks.some(
-    (track) => track.id !== trackId && track.isSolo,
-  );
+  const nextValue =
+    !(target?.isSolo ?? false) ||
+    tracks.some((track) => track.id !== trackId && track.isSolo);
 
   return tracks.map((track) => ({
     ...track,
@@ -108,10 +155,7 @@ export const setExclusiveSolo = (tracks: TimelineTrack[], trackId: string) => {
 export const getSoloTrackIds = (tracks: TimelineTrack[]) =>
   tracks.filter((track) => track.isSolo).map((track) => track.id);
 
-export const isTrackAudible = (
-  track: TimelineTrack,
-  soloTrackIds: string[],
-) => {
+export const isTrackAudible = (track: TimelineTrack, soloTrackIds: string[]) => {
   if (track.isMuted) {
     return false;
   }

@@ -11,6 +11,11 @@ export const CLIP_TYPE = {
 
 export type TimelineClipType = (typeof CLIP_TYPE)[keyof typeof CLIP_TYPE];
 export type TimelineClipMediaKind = 'audio' | 'video';
+export type TimelineClipFillMode =
+  | 'trim'
+  | 'loop'
+  | 'stretch'
+  | 'placeholder';
 
 export interface TimelineTrack {
   id: string;
@@ -34,6 +39,13 @@ export interface TimelineClip {
   volume: number;
   isMuted: boolean;
   isPlaying: boolean;
+  timelineStart: number;
+  timelineDuration: number;
+  sourceDuration: number;
+  sourceStart: number;
+  sourceEnd: number;
+  playbackRate: number;
+  fillMode: TimelineClipFillMode;
   startOffset: number;
   duration: number;
   start: number;
@@ -156,6 +168,28 @@ export interface TimelineEditorProps {
   onStop?: () => void;
 }
 
+type TimelineClipLegacyTimingInput = {
+  startOffset: number;
+  duration: number;
+  start: number;
+  end: number;
+};
+
+type TimelineClipExplicitTimingInput = {
+  timelineStart: number;
+  sourceDuration: number;
+  sourceStart?: number;
+  sourceEnd?: number;
+  timelineDuration?: number;
+  playbackRate?: number;
+  fillMode?: TimelineClipFillMode;
+};
+
+type TimelineClipTimingInput =
+  | TimelineClipLegacyTimingInput
+  | TimelineClipExplicitTimingInput
+  | (TimelineClipLegacyTimingInput & TimelineClipExplicitTimingInput);
+
 export const createTrack = (
   partial: Pick<TimelineTrack, 'id' | 'name'> & Partial<TimelineTrack>,
 ): TimelineTrack => ({
@@ -169,39 +203,60 @@ export const createTrack = (
 });
 
 export const createClip = (
-  partial: Pick<
-    TimelineClip,
-    'id' | 'trackId' | 'name' | 'startOffset' | 'start' | 'end' | 'duration'
-  > &
-    Partial<TimelineClip>,
-): TimelineClip => ({
-  id: partial.id,
-  trackId: partial.trackId,
-  name: partial.name,
-  type: partial.type ?? CLIP_TYPE.CREATED,
-  fileId: partial.fileId,
-  originalUrl: partial.originalUrl,
-  cachedUrl: partial.cachedUrl,
-  color: partial.color ?? randomColor(),
-  volume: partial.volume ?? 1,
-  isMuted: partial.isMuted ?? false,
-  isPlaying: partial.isPlaying ?? true,
-  startOffset: partial.startOffset,
-  duration: partial.duration,
-  start: partial.start,
-  end: partial.end,
-  updatedAt: partial.updatedAt,
-  parentId: partial.parentId,
-  candidates: partial.candidates,
-  primaryFileId: partial.primaryFileId,
-  placeholderType: partial.placeholderType,
-  placeholderLabel: partial.placeholderLabel,
-  placeholderLength: partial.placeholderLength,
-  mediaKind: partial.mediaKind ?? 'audio',
-  waveform: partial.waveform,
-  posterUrl: partial.posterUrl,
-  fade: partial.fade,
-});
+  partial: Pick<TimelineClip, 'id' | 'trackId' | 'name'> &
+    Partial<TimelineClip> &
+    TimelineClipTimingInput,
+): TimelineClip => {
+  const playbackRate = partial.playbackRate ?? 1;
+  const fillMode = partial.fillMode ?? defaultFillMode(partial);
+  const sourceDuration =
+    partial.sourceDuration ?? partial.duration ?? partial.sourceEnd ?? partial.end ?? 0;
+  const sourceStart = partial.sourceStart ?? partial.start ?? 0;
+  const sourceEnd =
+    partial.sourceEnd ?? partial.end ?? sourceDuration;
+  const trimmedDuration = Math.max(0, sourceEnd - sourceStart);
+  const defaultTimelineDuration = trimmedDuration / playbackRate;
+  const timelineDuration =
+    partial.timelineDuration ?? defaultTimelineDuration;
+  const timelineStart =
+    partial.timelineStart ?? (partial.startOffset ?? 0) + sourceStart;
+
+  return {
+    id: partial.id,
+    trackId: partial.trackId,
+    name: partial.name,
+    type: partial.type ?? CLIP_TYPE.CREATED,
+    fileId: partial.fileId,
+    originalUrl: partial.originalUrl,
+    cachedUrl: partial.cachedUrl,
+    color: partial.color ?? randomColor(),
+    volume: partial.volume ?? 1,
+    isMuted: partial.isMuted ?? false,
+    isPlaying: partial.isPlaying ?? true,
+    timelineStart,
+    timelineDuration,
+    sourceDuration,
+    sourceStart,
+    sourceEnd,
+    playbackRate,
+    fillMode,
+    startOffset: timelineStart - sourceStart,
+    duration: sourceDuration,
+    start: sourceStart,
+    end: sourceEnd,
+    updatedAt: partial.updatedAt,
+    parentId: partial.parentId,
+    candidates: partial.candidates,
+    primaryFileId: partial.primaryFileId,
+    placeholderType: partial.placeholderType,
+    placeholderLabel: partial.placeholderLabel,
+    placeholderLength: partial.placeholderLength,
+    mediaKind: partial.mediaKind ?? 'audio',
+    waveform: partial.waveform,
+    posterUrl: partial.posterUrl,
+    fade: partial.fade,
+  };
+};
 
 export const createVideoInfo = (
   partial: Pick<TimelineVideoInfo, 'id' | 'name'> & Partial<TimelineVideoInfo>,
@@ -210,6 +265,13 @@ export const createVideoInfo = (
   name: partial.name,
   duration: partial.duration,
 });
+
+const defaultFillMode = (clip: Partial<TimelineClip>) => {
+  if (clip.placeholderType) {
+    return 'placeholder';
+  }
+  return 'trim';
+};
 
 const randomColor = () => {
   const hue = Math.floor(Math.random() * 360);
