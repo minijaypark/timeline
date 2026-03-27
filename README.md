@@ -14,6 +14,7 @@
 - audio waveform / video badge / poster 기본 렌더
 - behavior 기반 move/resize/select 규칙 주입
 - track header 렌더 슬롯
+- `trim/loop/stretch/placeholder` fill mode
 
 제외 범위:
 
@@ -52,18 +53,30 @@ const clips = [
     id: 'line-01',
     trackId: 'dialogue',
     name: 'Line 01',
-    startOffset: 0,
-    start: 0,
-    end: 3.2,
-    duration: 3.2,
+    timelineStart: 0,
+    sourceDuration: 3.2,
+    sourceStart: 0,
+    sourceEnd: 3.2,
+    fillMode: 'trim',
+  }),
+  createClip({
+    id: 'music-bed',
+    trackId: 'dialogue',
+    name: 'Bed',
+    timelineStart: 4,
+    timelineDuration: 12,
+    sourceDuration: 3,
+    sourceStart: 0,
+    sourceEnd: 3,
+    fillMode: 'loop',
   }),
 ];
 
 const behavior: TimelineEditorBehavior = {
-  moveClip: ({ clip, nextStartOffset, nextTrackId }) =>
+  moveClip: ({ clip, nextTimelineStart, nextTrackId }) =>
     clip.id === 'music-bed'
-      ? { trackId: 'music', startOffset: Math.max(0, nextStartOffset) }
-      : { trackId: nextTrackId, startOffset: nextStartOffset },
+      ? { trackId: 'music', timelineStart: Math.max(0, nextTimelineStart) }
+      : { trackId: nextTrackId, timelineStart: nextTimelineStart },
 };
 
 const transport = useTimelineTransport({
@@ -96,6 +109,17 @@ const transport = useTimelineTransport({
 - `behavior.moveClip`: drag placement rule override
 - `behavior.resizeClip`: trim rule override
 - `clip.mediaKind`, `clip.waveform`, `clip.posterUrl`: media rendering hints
+
+### Timing Model
+
+- `timelineStart`: clip starts at this project time
+- `timelineDuration`: how much space the clip occupies on the timeline
+- `sourceDuration`: original media length
+- `sourceStart`, `sourceEnd`: trimmed source range
+- `fillMode: 'trim'`: default audio/video clip, cannot exceed source range
+- `fillMode: 'loop'`: timeline duration may exceed source range by repeating
+- `fillMode: 'stretch'`: timeline duration may exceed source range by time-stretching
+- `fillMode: 'placeholder'`: temporary block without finalized source media
 
 ## Example
 

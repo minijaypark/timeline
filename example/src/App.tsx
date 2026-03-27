@@ -51,7 +51,7 @@ const initialTracks = [
   createTrack({
     id: 'music',
     name: 'Music',
-    category: 'Locked Lane',
+    category: 'Loop Lane',
     volume: 0.7,
   }),
 ];
@@ -61,10 +61,11 @@ const initialClips = [
     id: 'line-01',
     trackId: 'dialogue',
     name: 'Line 01',
-    startOffset: 0,
-    start: 0,
-    end: 3.4,
-    duration: 3.4,
+    timelineStart: 0,
+    sourceDuration: 3.4,
+    sourceStart: 0,
+    sourceEnd: 3.4,
+    fillMode: 'trim',
     color: 'hsl(208 75% 54%)',
     mediaKind: 'audio',
     waveform: createWaveform(1),
@@ -77,10 +78,11 @@ const initialClips = [
     id: 'scene-a',
     trackId: 'fx',
     name: 'Scene A',
-    startOffset: 4.2,
-    start: 0,
-    end: 2.8,
-    duration: 2.8,
+    timelineStart: 4.2,
+    sourceDuration: 2.8,
+    sourceStart: 0,
+    sourceEnd: 2.8,
+    fillMode: 'trim',
     color: 'hsl(344 72% 56%)',
     mediaKind: 'video',
     posterUrl: videoPoster,
@@ -90,10 +92,11 @@ const initialClips = [
     id: 'whoosh',
     trackId: 'fx',
     name: 'Whoosh',
-    startOffset: 2.1,
-    start: 0,
-    end: 1.1,
-    duration: 1.1,
+    timelineStart: 2.1,
+    sourceDuration: 1.1,
+    sourceStart: 0,
+    sourceEnd: 1.1,
+    fillMode: 'trim',
     color: 'hsl(22 85% 56%)',
     mediaKind: 'audio',
     waveform: createWaveform(2, 14),
@@ -102,10 +105,12 @@ const initialClips = [
     id: 'music-bed',
     trackId: 'music',
     name: 'Bed',
-    startOffset: 0,
-    start: 12,
-    end: 24,
-    duration: 40,
+    timelineStart: 0,
+    timelineDuration: 24,
+    sourceDuration: 6,
+    sourceStart: 0,
+    sourceEnd: 6,
+    fillMode: 'loop',
     color: 'hsl(149 60% 42%)',
     mediaKind: 'audio',
     waveform: createWaveform(3, 28),
@@ -137,32 +142,33 @@ export default function App() {
 
   const behavior = useMemo<TimelineEditorBehavior>(
     () => ({
-      moveClip: ({ clip, nextStartOffset, nextTrackId }) => {
+      moveClip: ({ clip, nextTimelineStart, nextTrackId }) => {
         if (clip.id === 'music-bed') {
           return {
             trackId: 'music',
-            startOffset: Math.max(0, nextStartOffset),
+            timelineStart: Math.max(0, nextTimelineStart),
           };
         }
 
         return {
           trackId: nextTrackId,
-          startOffset: Math.max(0, nextStartOffset),
+          timelineStart: Math.max(0, nextTimelineStart),
         };
       },
-      resizeClip: ({ clip, edge, nextEnd, nextStart }) => {
+      resizeClip: ({ clip, edge, nextTimelineDuration, nextTimelineStart }) => {
         if (clip.id !== 'music-bed') {
-          return edge === 'left' ? { start: nextStart } : { end: nextEnd };
+          return null;
         }
 
         if (edge === 'left') {
           return {
-            start: Math.min(nextStart ?? clip.start, clip.end - 4),
+            timelineStart: nextTimelineStart,
+            timelineDuration: Math.max(nextTimelineDuration ?? 0, 6),
           };
         }
 
         return {
-          end: Math.max(nextEnd ?? clip.end, clip.start + 4),
+          timelineDuration: Math.max(nextTimelineDuration ?? clip.timelineDuration, 6),
         };
       },
     }),
@@ -172,6 +178,7 @@ export default function App() {
   const addTrack = () => {
     const number = nextTrackNumber;
     const trackId = `layer-${number}`;
+    const isLoopLane = number % 2 === 1;
 
     setNextTrackNumber(number + 1);
     setTracks((currentTracks) => [
@@ -179,7 +186,7 @@ export default function App() {
       createTrack({
         id: trackId,
         name: `Layer ${number}`,
-        category: 'Generated',
+        category: isLoopLane ? 'Loop Lane' : 'Trim Lane',
         volume: 0.85,
       }),
     ]);
@@ -189,10 +196,12 @@ export default function App() {
         id: `layer-clip-${number}`,
         trackId,
         name: `Layer ${number} Cue`,
-        startOffset: Math.min(number * 1.15, TOTAL_DURATION - 4),
-        start: 0,
-        end: 3.5,
-        duration: 3.5,
+        timelineStart: Math.min(number * 1.15, TOTAL_DURATION - 6),
+        timelineDuration: isLoopLane ? 6 : undefined,
+        sourceDuration: 3.5,
+        sourceStart: 0,
+        sourceEnd: 3.5,
+        fillMode: isLoopLane ? 'loop' : 'trim',
         color: `hsl(${(number * 47) % 360} 72% 58%)`,
         mediaKind: number % 2 === 0 ? 'audio' : 'video',
         posterUrl: number % 2 === 0 ? undefined : videoPoster,
@@ -221,9 +230,13 @@ export default function App() {
       clips.map((clip) => ({
         id: clip.id,
         trackId: clip.trackId,
+        fillMode: clip.fillMode,
         mediaKind: clip.mediaKind,
-        timelineStart: Number((clip.startOffset + clip.start).toFixed(2)),
-        timelineEnd: Number((clip.startOffset + clip.end).toFixed(2)),
+        timelineStart: Number(clip.timelineStart.toFixed(2)),
+        timelineDuration: Number(clip.timelineDuration.toFixed(2)),
+        sourceStart: Number(clip.sourceStart.toFixed(2)),
+        sourceEnd: Number(clip.sourceEnd.toFixed(2)),
+        sourceDuration: Number(clip.sourceDuration.toFixed(2)),
       })),
     [clips],
   );
@@ -232,22 +245,22 @@ export default function App() {
     <main className="example-shell">
       <section className="example-copy">
         <p className="example-eyebrow">Timeline Example</p>
-        <h1>확장 포인트와 transport를 같이 쓰는 예제</h1>
+        <h1>source와 timeline을 분리한 모델 예제</h1>
         <p className="example-lead">
-          이 예제는 `useTimelineTransport`, `behavior`, `renderTrackHeader`를
-          같이 사용합니다. audio waveform, video badge/poster, 동적 track
-          추가·삭제 흐름까지 한 화면에서 확인할 수 있습니다.
+          일반 audio/video clip은 `trim` 모드라서 원본 길이를 넘겨 늘어나지
+          않습니다. `music-bed`처럼 반복 가능한 clip만 `loop` 모드로 두고
+          timeline duration을 따로 확장합니다.
         </p>
       </section>
 
       <section className="example-notes">
         <div className="example-note">
-          <strong>Transport</strong>
-          <span>play, pause, stop, seek를 hook으로 분리해서 재사용합니다.</span>
+          <strong>Trim</strong>
+          <span>원본 source 구간만 줄이거나 늘릴 수 있고, source를 넘길 수 없습니다.</span>
         </div>
         <div className="example-note">
-          <strong>Media</strong>
-          <span>clip 안에서 audio waveform과 video poster를 기본 렌더합니다.</span>
+          <strong>Loop</strong>
+          <span>source는 그대로 두고 timeline duration만 확장해서 반복 재생합니다.</span>
         </div>
       </section>
 
