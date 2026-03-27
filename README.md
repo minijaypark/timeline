@@ -10,6 +10,8 @@
 - track mute/solo/volume 편집
 - ruler 기반 region selection
 - clip 렌더 슬롯
+- behavior 기반 move/resize/select 규칙 주입
+- track header 렌더 슬롯
 
 제외 범위:
 
@@ -38,6 +40,7 @@ import {
   TimelineEditor,
   createClip,
   createTrack,
+  type TimelineEditorBehavior,
 } from '@minijay/timeline';
 
 const tracks = [createTrack({ id: 'dialogue', name: 'Dialogue' })];
@@ -53,16 +56,32 @@ const clips = [
   }),
 ];
 
+const behavior: TimelineEditorBehavior = {
+  moveClip: ({ clip, nextStartOffset, nextTrackId }) =>
+    clip.id === 'music-bed'
+      ? { trackId: 'music', startOffset: Math.max(0, nextStartOffset) }
+      : { trackId: nextTrackId, startOffset: nextStartOffset },
+};
+
 <TimelineEditor
   tracks={tracks}
   clips={clips}
   totalDuration={12}
   currentTime={0}
+  behavior={behavior}
   onClipsChange={setClips}
   onTracksChange={setTracks}
   onSeek={setCurrentTime}
 />;
 ```
+
+### Extension Points
+
+- `renderClip`: clip body custom rendering
+- `renderTrackHeader`: header lane custom rendering
+- `behavior.selectClips`: selection rule override
+- `behavior.moveClip`: drag placement rule override
+- `behavior.resizeClip`: trim rule override
 
 ## Example
 

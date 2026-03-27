@@ -3,14 +3,31 @@ import {
   TimelineEditor,
   createClip,
   createTrack,
+  type TimelineEditorBehavior,
+  type TimelineTrackHeaderRenderArgs,
 } from '@minijay/timeline';
 import '@minijay/timeline/timeline.css';
 import './app.css';
 
 const initialTracks = [
-  createTrack({ id: 'dialogue', name: 'Dialogue', volume: 1 }),
-  createTrack({ id: 'fx', name: 'Effects', volume: 0.9 }),
-  createTrack({ id: 'music', name: 'Music', volume: 0.7 }),
+  createTrack({
+    id: 'dialogue',
+    name: 'Dialogue',
+    category: 'Voice',
+    volume: 1,
+  }),
+  createTrack({
+    id: 'fx',
+    name: 'Effects',
+    category: 'Design',
+    volume: 0.9,
+  }),
+  createTrack({
+    id: 'music',
+    name: 'Music',
+    category: 'Locked Lane',
+    volume: 0.7,
+  }),
 ];
 
 const initialClips = [
@@ -54,11 +71,55 @@ const initialClips = [
   }),
 ];
 
+const trackHeader = ({ track, defaultContent }: TimelineTrackHeaderRenderArgs) => (
+  <div className="example-trackHeader">
+    <div className="example-trackMeta">
+      <strong>{track.category ?? 'Track'}</strong>
+      <span>{track.name}</span>
+    </div>
+    <div className="example-trackControls">{defaultContent}</div>
+  </div>
+);
+
 export default function App() {
   const [tracks, setTracks] = useState(initialTracks);
   const [clips, setClips] = useState(initialClips);
   const [currentTime, setCurrentTime] = useState(1.5);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  const behavior = useMemo<TimelineEditorBehavior>(
+    () => ({
+      moveClip: ({ clip, nextStartOffset, nextTrackId }) => {
+        if (clip.id === 'music-bed') {
+          return {
+            trackId: 'music',
+            startOffset: Math.max(0, nextStartOffset),
+          };
+        }
+
+        return {
+          trackId: nextTrackId,
+          startOffset: Math.max(0, nextStartOffset),
+        };
+      },
+      resizeClip: ({ clip, edge, nextEnd, nextStart }) => {
+        if (clip.id !== 'music-bed') {
+          return edge === 'left' ? { start: nextStart } : { end: nextEnd };
+        }
+
+        if (edge === 'left') {
+          return {
+            start: Math.min(nextStart ?? clip.start, clip.end - 4),
+          };
+        }
+
+        return {
+          end: Math.max(nextEnd ?? clip.end, clip.start + 4),
+        };
+      },
+    }),
+    [],
+  );
 
   const summary = useMemo(
     () =>
@@ -75,12 +136,23 @@ export default function App() {
     <main className="example-shell">
       <section className="example-copy">
         <p className="example-eyebrow">Timeline Example</p>
-        <h1>독립 패키지 사용 예시</h1>
+        <h1>확장 포인트 중심 예제</h1>
         <p className="example-lead">
-          이 예제는 로컬 workspace 의존성으로 `@minijay/timeline`을 직접
-          가져와서 편집 상태를 React state로 관리합니다. 클립을 드래그하거나
-          좌우를 trim 하면 아래 JSON 미리보기가 바로 갱신됩니다.
+          이 예제는 `behavior`와 `renderTrackHeader`를 같이 사용합니다.
+          music lane은 다른 트랙으로 못 옮기고, 최소 길이도 강제됩니다.
+          헤더도 기본 UI 위에 카테고리 메타데이터를 덧붙여서 렌더링합니다.
         </p>
+      </section>
+
+      <section className="example-notes">
+        <div className="example-note">
+          <strong>Behavior</strong>
+          <span>clip move/resize 규칙을 외부에서 제어합니다.</span>
+        </div>
+        <div className="example-note">
+          <strong>Render Slot</strong>
+          <span>track header는 기본 컨트롤을 유지한 채 감쌀 수 있습니다.</span>
+        </div>
       </section>
 
       <section className="example-stage">
@@ -90,6 +162,8 @@ export default function App() {
           currentTime={currentTime}
           totalDuration={30}
           isPlaying={isPlaying}
+          behavior={behavior}
+          renderTrackHeader={trackHeader}
           onTracksChange={setTracks}
           onClipsChange={setClips}
           onSeek={setCurrentTime}

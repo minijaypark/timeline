@@ -58,6 +58,34 @@ body {
   min-width: 0;
 }
 
+.example-notes {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.example-note {
+  background: rgba(15, 23, 42, 0.92);
+  border-radius: 18px;
+  color: #e2e8f0;
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+}
+
+.example-note strong {
+  color: #f8fafc;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.example-note span {
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .example-panel {
   display: grid;
   gap: 20px;
@@ -83,12 +111,56 @@ body {
   padding: 16px;
 }
 
+.example-trackHeader {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.example-trackMeta {
+  display: grid;
+  gap: 2px;
+  min-width: 82px;
+}
+
+.example-trackMeta strong {
+  color: #2563eb;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.example-trackMeta span {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.example-trackControls {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+}
+
+.example-trackControls .tl-trackName {
+  display: none;
+}
+
 @media (max-width: 960px) {
   .example-shell {
     padding: 18px;
   }
 
+  .example-notes,
   .example-panel {
     grid-template-columns: 1fr;
+  }
+
+  .example-trackHeader {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
