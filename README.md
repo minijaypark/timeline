@@ -5,11 +5,13 @@
 포함 범위:
 
 - 트랙/클립 데이터 모델
+- `useTimelineTransport` 기반 playback state
 - 타임라인 ruler, playhead, zoom
 - 클립 선택, 이동, 좌우 trim
 - track mute/solo/volume 편집
 - ruler 기반 region selection
 - clip 렌더 슬롯
+- audio waveform / video badge / poster 기본 렌더
 - behavior 기반 move/resize/select 규칙 주입
 - track header 렌더 슬롯
 
@@ -41,6 +43,7 @@ import {
   createClip,
   createTrack,
   type TimelineEditorBehavior,
+  useTimelineTransport,
 } from '@minijay/timeline';
 
 const tracks = [createTrack({ id: 'dialogue', name: 'Dialogue' })];
@@ -63,25 +66,36 @@ const behavior: TimelineEditorBehavior = {
       : { trackId: nextTrackId, startOffset: nextStartOffset },
 };
 
+const transport = useTimelineTransport({
+  duration: 12,
+  initialTime: 0,
+});
+
 <TimelineEditor
   tracks={tracks}
   clips={clips}
   totalDuration={12}
-  currentTime={0}
+  currentTime={transport.currentTime}
+  isPlaying={transport.isPlaying}
   behavior={behavior}
   onClipsChange={setClips}
   onTracksChange={setTracks}
-  onSeek={setCurrentTime}
+  onSeek={transport.seek}
+  onPlay={transport.play}
+  onPause={transport.pause}
+  onStop={transport.stop}
 />;
 ```
 
 ### Extension Points
 
+- `useTimelineTransport`: playback state and controls
 - `renderClip`: clip body custom rendering
 - `renderTrackHeader`: header lane custom rendering
 - `behavior.selectClips`: selection rule override
 - `behavior.moveClip`: drag placement rule override
 - `behavior.resizeClip`: trim rule override
+- `clip.mediaKind`, `clip.waveform`, `clip.posterUrl`: media rendering hints
 
 ## Example
 
