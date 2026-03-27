@@ -10,6 +10,7 @@ export const CLIP_TYPE = {
 } as const;
 
 export type TimelineClipType = (typeof CLIP_TYPE)[keyof typeof CLIP_TYPE];
+export type TimelineClipMediaKind = 'audio' | 'video';
 
 export interface TimelineTrack {
   id: string;
@@ -44,6 +45,9 @@ export interface TimelineClip {
   placeholderType?: 'draft' | 'loading' | 'error' | 'recording' | 'merging';
   placeholderLabel?: string;
   placeholderLength?: number;
+  mediaKind?: TimelineClipMediaKind;
+  waveform?: number[];
+  posterUrl?: string;
   fade?: {
     in?: {
       duration: number;
@@ -193,6 +197,9 @@ export const createClip = (
   placeholderType: partial.placeholderType,
   placeholderLabel: partial.placeholderLabel,
   placeholderLength: partial.placeholderLength,
+  mediaKind: partial.mediaKind ?? 'audio',
+  waveform: partial.waveform,
+  posterUrl: partial.posterUrl,
   fade: partial.fade,
 });
 

@@ -8,6 +8,7 @@ export {
 } from './timeline/types';
 export type {
   TimelineClip,
+  TimelineClipMediaKind,
   TimelineClipMoveArgs,
   TimelineClipRenderArgs,
   TimelineClipResizeArgs,

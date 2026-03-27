@@ -15,16 +15,41 @@ import {
   clipLeftPx,
   clipVisibleDuration,
   clipWidthPx,
+  MIN_CLIP_WIDTH_PX,
   isClipActiveAtTime,
   isTrackAudible,
 } from '../utils';
 
-const renderDefaultClipContent = (clip: TimelineClip, visibleDuration: number) => (
-  <div className="tl-clipBody">
-    <span className="tl-clipLabel">{clip.name}</span>
-    <span className="tl-clipMeta">{visibleDuration.toFixed(2)}s</span>
-  </div>
-);
+const renderDefaultClipContent = (clip: TimelineClip, visibleDuration: number) => {
+  const waveformBars = clip.waveform?.slice(0, 32) ?? [];
+
+  return (
+    <div className="tl-clipBody" data-has-waveform={waveformBars.length > 0}>
+      <div className="tl-clipHeader">
+        <span className="tl-clipLabel">{clip.name}</span>
+        <div className="tl-clipMetaGroup">
+          {clip.mediaKind === 'video' ? (
+            <span className="tl-clipBadge">Video</span>
+          ) : null}
+          <span className="tl-clipMeta">{visibleDuration.toFixed(2)}s</span>
+        </div>
+      </div>
+      {waveformBars.length > 0 ? (
+        <div className="tl-waveform" aria-hidden="true">
+          {waveformBars.map((sample, index) => (
+            <span
+              key={`${clip.id}-${index}`}
+              className="tl-waveformBar"
+              style={{
+                height: `${Math.max(16, Math.min(100, sample * 100))}%`,
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 export const TimelineTrackRows = ({
   clipsByTrack,
@@ -130,11 +155,18 @@ export const TimelineTrackRows = ({
                         left,
                         width,
                         ['--clip-color' as string]: clip.color,
+                        ['--clip-min-width' as string]: `${MIN_CLIP_WIDTH_PX}px`,
                         opacity: disabled ? 0.48 : 1,
                       } as CSSProperties
                     }
                     onPointerDown={(event) => onClipPointerDown(event, track.id, clip)}
                   >
+                    {clip.mediaKind === 'video' && clip.posterUrl ? (
+                      <div
+                        className="tl-clipPoster"
+                        style={{ backgroundImage: `url(${clip.posterUrl})` }}
+                      />
+                    ) : null}
                     {fadeInWidth > 0 ? (
                       <div className="tl-fadeIn" style={{ width: fadeInWidth }} />
                     ) : null}
