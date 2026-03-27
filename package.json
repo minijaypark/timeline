@@ -1,0 +1,40 @@
+{
+  "name": "@minijay/timeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.32.1",
+  "main": "./dist/timeline.js",
+  "module": "./dist/timeline.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/timeline.js"
+    },
+    "./timeline.css": {
+      "default": "./dist/timeline.css"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "pnpm build:types && vite build",
+    "build:types": "tsc -p tsconfig.json --emitDeclarationOnly",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "dev:example": "pnpm --filter timeline-example dev",
+    "build:example": "pnpm --filter timeline-example build"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0"
+  }
+}
