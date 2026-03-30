@@ -223,6 +223,11 @@ export default function App() {
           totalDuration={totalDuration}
           isPlaying={transport.isPlaying}
           behavior={behavior}
+          emptyState={
+            <div>
+              No tracks yet. Add a track or upload media to start editing.
+            </div>
+          }
           renderTrackHeader={trackHeader}
           selectedClipIds={selectedClipIds}
           onSelectedClipIdsChange={setSelectedClipIds}

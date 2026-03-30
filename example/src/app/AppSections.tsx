@@ -52,6 +52,10 @@ export const ExampleIntro = () => (
         <strong>Preview</strong>
         <span>timeline transport와 연결된 viewer가 현재 프레임을 보여주고, source 카드는 원본 확인용으로 남겨둡니다.</span>
       </div>
+      <div className="example-note">
+        <strong>Shortcuts</strong>
+        <span>timeline을 클릭한 뒤 Space, Arrow keys, Delete, +/- 로 편집 흐름을 바로 확인할 수 있습니다.</span>
+      </div>
     </section>
   </>
 );

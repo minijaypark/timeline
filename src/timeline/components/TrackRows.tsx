@@ -6,6 +6,7 @@ import {
 } from 'react';
 import type {
   TimelineClip,
+  TimelineClipContentRenderArgs,
   TimelineClipRenderArgs,
   TimelineRegion,
   TimelineTrack,
@@ -32,7 +33,51 @@ const renderDefaultClipContent = (
   visibleWidth: number,
   visibleLeft: number,
   fullWidth: number,
+  renderClipContent?: (args: TimelineClipContentRenderArgs) => ReactNode,
 ) => {
+  const defaultBodyContent = (
+    <>
+      {clip.mediaKind === 'video' ? (
+        <VideoThumbnailStrip
+          clip={clip}
+          fullWidth={fullWidth}
+          viewportOffset={visibleLeft}
+        />
+      ) : null}
+      <div className="tl-clipInfo">
+        <div className="tl-clipHeader">
+          <span className="tl-clipLabel">{clip.name}</span>
+          <div className="tl-clipMetaGroup">
+            {clip.mediaKind === 'video' ? (
+              <span className="tl-clipBadge">Video</span>
+            ) : null}
+            <span className="tl-clipMeta">{visibleDuration.toFixed(2)}s</span>
+          </div>
+        </div>
+        {clip.mediaKind === 'audio' ? (
+          <AudioWaveform
+            clip={clip}
+            fullWidth={fullWidth}
+            renderFullSource={getClipFillMode(clip) === 'trim'}
+            viewportOffset={visibleLeft}
+          />
+        ) : null}
+      </div>
+    </>
+  );
+  const bodyContent = renderClipContent
+    ? renderClipContent({
+        clip,
+        isSelected,
+        isActive,
+        visibleDuration,
+        visibleWidth,
+        visibleLeft,
+        fullWidth,
+        defaultContent: defaultBodyContent,
+      })
+    : defaultBodyContent;
+
   return (
     <div
       className="tl-clipBody"
@@ -42,32 +87,7 @@ const renderDefaultClipContent = (
       style={{ left: visibleLeft, width: visibleWidth }}
     >
       <div className="tl-clipBodyInner">
-        {clip.mediaKind === 'video' ? (
-          <VideoThumbnailStrip
-            clip={clip}
-            fullWidth={fullWidth}
-            viewportOffset={visibleLeft}
-          />
-        ) : null}
-        <div className="tl-clipInfo">
-          <div className="tl-clipHeader">
-            <span className="tl-clipLabel">{clip.name}</span>
-            <div className="tl-clipMetaGroup">
-              {clip.mediaKind === 'video' ? (
-                <span className="tl-clipBadge">Video</span>
-              ) : null}
-              <span className="tl-clipMeta">{visibleDuration.toFixed(2)}s</span>
-            </div>
-          </div>
-          {clip.mediaKind === 'audio' ? (
-            <AudioWaveform
-              clip={clip}
-              fullWidth={fullWidth}
-              renderFullSource={getClipFillMode(clip) === 'trim'}
-              viewportOffset={visibleLeft}
-            />
-          ) : null}
-        </div>
+        {bodyContent}
       </div>
     </div>
   );
@@ -83,6 +103,8 @@ export const TrackRows = ({
   onClipResizePointerDown,
   pxPerSec,
   region,
+  emptyState,
+  renderClipContent,
   renderClip,
   selectedClipIds,
   soloTrackIds,
@@ -113,6 +135,8 @@ export const TrackRows = ({
   ) => void;
   pxPerSec: number;
   region: TimelineRegion | null;
+  emptyState?: ReactNode;
+  renderClipContent?: (args: TimelineClipContentRenderArgs) => ReactNode;
   renderClip?: (args: TimelineClipRenderArgs) => ReactNode;
   selectedClipIds: string[];
   soloTrackIds: string[];
@@ -198,6 +222,7 @@ export const TrackRows = ({
                   visibleWidth,
                   visibleLeft,
                   width,
+                  renderClipContent,
                 );
 
                 return (
@@ -289,7 +314,7 @@ export const TrackRows = ({
         </div>
 
         {tracks.length === 0 ? (
-          <div className="tl-empty">No tracks available</div>
+          <div className="tl-empty">{emptyState ?? 'No tracks available'}</div>
         ) : null}
       </div>
     </div>

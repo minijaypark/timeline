@@ -9,6 +9,7 @@ import { TrackHeaders } from './components/TrackHeaders';
 import { TrackRows } from './components/TrackRows';
 import type { TimelineEditorProps, TimelineRegion } from './types';
 import { useControllableState } from './useControllableState';
+import { useEditorShortcuts } from './useEditorShortcuts';
 import { useInteractions } from './useInteractions';
 import { useViewport } from './useViewport';
 import {
@@ -27,6 +28,7 @@ export const Editor = ({
   currentTime,
   totalDuration,
   isPlaying = false,
+  isLoading = false,
   video = null,
   className,
   style,
@@ -44,8 +46,12 @@ export const Editor = ({
   onSelectedClipIdsChange,
   region,
   onRegionChange,
+  loadingFallback,
+  emptyState,
+  enableShortcuts = true,
   snapToGrid = true,
   behavior,
+  renderClipContent,
   renderClip,
   renderTrackHeader,
   onTracksChange,
@@ -70,6 +76,12 @@ export const Editor = ({
     defaultValue: null as TimelineRegion | null,
     onChange: onRegionChange,
   });
+  const editorStyle = {
+    ...style,
+    height,
+    ['--tl-left-column-width' as string]: `${leftColumnWidth}px`,
+    ['--tl-row-height' as string]: `${rowHeight}px`,
+  };
 
   const pxPerSec = resolvedZoom * basePxPerSec;
   const gridSize = getGridInterval(pxPerSec);
@@ -100,6 +112,24 @@ export const Editor = ({
     snapToGrid,
     totalDuration,
     tracks,
+  });
+  const shortcuts = useEditorShortcuts({
+    clips,
+    currentTime,
+    enabled: enableShortcuts,
+    maxZoom,
+    minZoom,
+    onClipsChange,
+    onPause,
+    onPlay,
+    onSeek,
+    onSelectedClipIdsChange: setResolvedSelection,
+    onStop,
+    selectedClipIds: resolvedSelection,
+    totalDuration,
+    zoom: resolvedZoom,
+    zoomStep,
+    onZoomChange: setResolvedZoom,
   });
 
   const rulerTicks = useMemo(() => {
@@ -194,15 +224,29 @@ export const Editor = ({
     onTracksChange(updateTrackList(tracks, trackId, { volume: value }));
   };
 
+  if (isLoading) {
+    return (
+      <div
+        className={['tl-editor', className].filter(Boolean).join(' ')}
+        style={editorStyle}
+      >
+        <div className="tl-status">
+          {loadingFallback ?? 'Loading timeline...'}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={['tl-editor', className].filter(Boolean).join(' ')}
-      style={{
-        ...style,
-        height,
-        ['--tl-left-column-width' as string]: `${leftColumnWidth}px`,
-        ['--tl-row-height' as string]: `${rowHeight}px`,
-      }}
+      data-playing={isPlaying}
+      ref={shortcuts.containerRef}
+      style={editorStyle}
+      tabIndex={enableShortcuts ? 0 : undefined}
+      onKeyDown={shortcuts.handleKeyDown}
+      onPointerDownCapture={shortcuts.handlePointerDownCapture}
+      onWheelCapture={shortcuts.handleWheelCapture}
     >
       <Toolbar
         currentTime={currentTime}
@@ -268,6 +312,8 @@ export const Editor = ({
             }}
             pxPerSec={pxPerSec}
             region={resolvedRegion}
+            emptyState={emptyState}
+            renderClipContent={renderClipContent}
             renderClip={renderClip}
             selectedClipIds={resolvedSelection}
             soloTrackIds={soloTrackIds}

@@ -94,6 +94,17 @@ export interface TimelineClipRenderArgs {
   defaultContent: ReactNode;
 }
 
+export interface TimelineClipContentRenderArgs {
+  clip: TimelineClip;
+  isSelected: boolean;
+  isActive: boolean;
+  visibleDuration: number;
+  visibleWidth: number;
+  visibleLeft: number;
+  fullWidth: number;
+  defaultContent: ReactNode;
+}
+
 export interface TimelineTrackHeaderRenderArgs {
   track: TimelineTrack;
   isReadOnly: boolean;
@@ -157,6 +168,7 @@ export interface TimelineEditorProps {
   currentTime: number;
   totalDuration: number;
   isPlaying?: boolean;
+  isLoading?: boolean;
   video?: TimelineVideoInfo | null;
   className?: string;
   style?: CSSProperties;
@@ -174,8 +186,12 @@ export interface TimelineEditorProps {
   onSelectedClipIdsChange?: (clipIds: string[]) => void;
   region?: TimelineRegion | null;
   onRegionChange?: (region: TimelineRegion | null) => void;
+  loadingFallback?: ReactNode;
+  emptyState?: ReactNode;
+  enableShortcuts?: boolean;
   snapToGrid?: boolean;
   behavior?: TimelineEditorBehavior;
+  renderClipContent?: (args: TimelineClipContentRenderArgs) => ReactNode;
   renderClip?: (args: TimelineClipRenderArgs) => ReactNode;
   renderTrackHeader?: (args: TimelineTrackHeaderRenderArgs) => ReactNode;
   onTracksChange?: (tracks: TimelineTrack[]) => void;

@@ -10,6 +10,7 @@ export {
 } from './timeline/types';
 export type {
   TimelineClip,
+  TimelineClipContentRenderArgs,
   TimelineClipFillMode,
   TimelineClipMediaKind,
   TimelineClipThumbnail,
