@@ -112,4 +112,25 @@ describe('useTransport', () => {
 
     expect(handleRef.current?.currentTime).toBeCloseTo(2.3, 5);
   });
+
+  it('resets to stop position when playback reaches the end', () => {
+    const handleRef = { current: null as TransportHandle | null };
+
+    render(<Harness handleRef={handleRef} initialTime={9.8} />);
+
+    act(() => {
+      handleRef.current?.play();
+    });
+
+    act(() => {
+      flushFrame(1000);
+    });
+
+    act(() => {
+      flushFrame(1300);
+    });
+
+    expect(handleRef.current?.isPlaying).toBe(false);
+    expect(handleRef.current?.currentTime).toBe(0);
+  });
 });

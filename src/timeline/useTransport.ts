@@ -32,6 +32,7 @@ export const useTransport = ({
   const resolvedLoopEnd = hasValidLoopRegion
     ? clamp(loopRegion.end, resolvedLoopStart, duration)
     : 0;
+  const resolvedStopTime = hasValidLoopRegion ? resolvedLoopStart : 0;
   const [currentTime, setCurrentTime] = useState(() =>
     clamp(initialTime, 0, duration),
   );
@@ -93,6 +94,7 @@ export const useTransport = ({
 
       if (shouldStop) {
         setIsPlaying(false);
+        setCurrentTime(resolvedStopTime);
         return;
       }
 
@@ -137,7 +139,7 @@ export const useTransport = ({
     setIsPlaying,
     stop: () => {
       setIsPlaying(false);
-      setCurrentTime(hasValidLoopRegion ? resolvedLoopStart : 0);
+      setCurrentTime(resolvedStopTime);
     },
     toggle: () => setIsPlaying((playing) => !playing),
   };
