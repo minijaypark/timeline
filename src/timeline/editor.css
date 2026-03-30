@@ -84,6 +84,12 @@
   opacity: 0.55;
 }
 
+.tl-button[data-active='true'] {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
 .tl-zoomValue,
 .tl-timeValue {
   color: var(--tl-muted);

@@ -33,6 +33,10 @@ export default function App() {
   const [clips, setClips] = useState<TimelineClip[]>([]);
   const [nextTrackNumber, setNextTrackNumber] = useState(4);
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
+  const [region, setRegion] = useState<{ start: number; end: number } | null>(
+    null,
+  );
+  const [isLoopEnabled, setIsLoopEnabled] = useState(false);
   const { isUploading, uploadMessage, handleFileUpload } = useMediaUploads({
     clips,
     setTracks,
@@ -64,6 +68,8 @@ export default function App() {
     duration: totalDuration,
     playbackEnd,
     initialTime: 5.2,
+    loop: isLoopEnabled && region !== null && region.end > region.start,
+    loopRegion: region,
   });
 
   const behavior = useMemo<TimelineEditorBehavior>(
@@ -139,6 +145,12 @@ export default function App() {
       currentIds.filter((clipId) => clips.some((clip) => clip.id === clipId)),
     );
   }, [clips]);
+
+  useEffect(() => {
+    if (!region || region.end <= region.start) {
+      setIsLoopEnabled(false);
+    }
+  }, [region]);
 
   const addTrack = () => {
     const number = nextTrackNumber;
@@ -232,6 +244,7 @@ export default function App() {
           currentTime={transport.currentTime}
           totalDuration={totalDuration}
           isPlaying={transport.isPlaying}
+          loop={isLoopEnabled}
           behavior={behavior}
           emptyState={
             <div>
@@ -239,7 +252,10 @@ export default function App() {
             </div>
           }
           renderTrackHeader={trackHeader}
+          region={region}
           selectedClipIds={selectedClipIds}
+          onLoopChange={setIsLoopEnabled}
+          onRegionChange={setRegion}
           onSelectedClipIdsChange={setSelectedClipIds}
           onTracksChange={setTracks}
           onClipsChange={setClips}

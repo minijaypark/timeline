@@ -1,5 +1,6 @@
 import {
   type PointerEvent as ReactPointerEvent,
+  useEffect,
   useMemo,
 } from 'react';
 import './editor.css';
@@ -28,6 +29,7 @@ export const Editor = ({
   currentTime,
   totalDuration,
   isPlaying = false,
+  loop = false,
   isLoading = false,
   video = null,
   className,
@@ -60,6 +62,7 @@ export const Editor = ({
   onPlay,
   onPause,
   onStop,
+  onLoopChange,
 }: TimelineEditorProps) => {
   const [resolvedZoom, setResolvedZoom] = useControllableState({
     value: zoom,
@@ -86,6 +89,8 @@ export const Editor = ({
   const pxPerSec = resolvedZoom * basePxPerSec;
   const gridSize = getGridInterval(pxPerSec);
   const labelInterval = getLabelInterval(pxPerSec);
+  const hasValidRegion =
+    resolvedRegion !== null && resolvedRegion.end > resolvedRegion.start;
   const { viewportRef, canvasWidth, contentWidth } = useViewport({
     leftColumnWidth,
     pxPerSec,
@@ -131,6 +136,12 @@ export const Editor = ({
     zoomStep,
     onZoomChange: setResolvedZoom,
   });
+
+  useEffect(() => {
+    if (loop && !hasValidRegion) {
+      onLoopChange?.(false);
+    }
+  }, [hasValidRegion, loop, onLoopChange]);
 
   const rulerTicks = useMemo(() => {
     const ticks: Array<{ left: number; label?: string; strong: boolean }> = [];
@@ -250,8 +261,11 @@ export const Editor = ({
     >
       <Toolbar
         currentTime={currentTime}
+        loop={loop}
+        loopDisabled={!hasValidRegion}
         maxZoom={maxZoom}
         minZoom={minZoom}
+        onLoopChange={onLoopChange}
         onPause={onPause}
         onPlay={onPlay}
         onStop={onStop}

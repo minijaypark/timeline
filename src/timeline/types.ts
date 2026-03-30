@@ -168,6 +168,7 @@ export interface TimelineEditorProps {
   currentTime: number;
   totalDuration: number;
   isPlaying?: boolean;
+  loop?: boolean;
   isLoading?: boolean;
   video?: TimelineVideoInfo | null;
   className?: string;
@@ -200,6 +201,7 @@ export interface TimelineEditorProps {
   onPlay?: () => void;
   onPause?: () => void;
   onStop?: () => void;
+  onLoopChange?: (loop: boolean) => void;
 }
 
 export interface TimelinePreviewProps {

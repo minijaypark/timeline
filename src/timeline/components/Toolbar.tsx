@@ -2,8 +2,11 @@ import { formatTime } from '../utils';
 
 export const Toolbar = ({
   currentTime,
+  loop = false,
+  loopDisabled = false,
   maxZoom,
   minZoom,
+  onLoopChange,
   onPause,
   onPlay,
   onStop,
@@ -13,8 +16,11 @@ export const Toolbar = ({
   zoomStep,
 }: {
   currentTime: number;
+  loop?: boolean;
+  loopDisabled?: boolean;
   maxZoom: number;
   minZoom: number;
+  onLoopChange?: (loop: boolean) => void;
   onPause?: () => void;
   onPlay?: () => void;
   onStop?: () => void;
@@ -33,6 +39,15 @@ export const Toolbar = ({
       </button>
       <button className="tl-button" onClick={onStop} disabled={!onStop}>
         Stop
+      </button>
+      <button
+        aria-pressed={loop}
+        className="tl-button"
+        data-active={loop}
+        disabled={loopDisabled || !onLoopChange}
+        onClick={() => onLoopChange?.(!loop)}
+      >
+        Loop
       </button>
     </div>
     <div className="tl-toolbarGroup">

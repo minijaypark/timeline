@@ -20,6 +20,18 @@ export const useTransport = ({
   playbackRate?: number;
 }) => {
   const resolvedPlaybackEnd = clamp(playbackEnd, 0, duration);
+  const hasValidLoopRegion =
+    loop &&
+    loopRegion !== null &&
+    Number.isFinite(loopRegion.start) &&
+    Number.isFinite(loopRegion.end) &&
+    loopRegion.end > loopRegion.start;
+  const resolvedLoopStart = hasValidLoopRegion
+    ? clamp(loopRegion.start, 0, duration)
+    : 0;
+  const resolvedLoopEnd = hasValidLoopRegion
+    ? clamp(loopRegion.end, resolvedLoopStart, duration)
+    : 0;
   const [currentTime, setCurrentTime] = useState(() =>
     clamp(initialTime, 0, duration),
   );
@@ -28,8 +40,12 @@ export const useTransport = ({
   const lastFrameTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setCurrentTime((time) => clamp(time, 0, duration));
-  }, [duration]);
+    setCurrentTime((time) =>
+      hasValidLoopRegion
+        ? clamp(time, resolvedLoopStart, resolvedLoopEnd)
+        : clamp(time, 0, duration),
+    );
+  }, [duration, hasValidLoopRegion, resolvedLoopEnd, resolvedLoopStart]);
 
   useEffect(() => {
     if (!isPlaying) {
@@ -54,7 +70,7 @@ export const useTransport = ({
 
       setCurrentTime((time) => {
         const nextTime = time + deltaSeconds;
-        if (!loop || !loopRegion || loopRegion.end <= loopRegion.start) {
+        if (!hasValidLoopRegion) {
           if (nextTime >= resolvedPlaybackEnd) {
             shouldStop = true;
             return resolvedPlaybackEnd;
@@ -62,13 +78,17 @@ export const useTransport = ({
           return nextTime;
         }
 
-        if (nextTime <= loopRegion.end) {
+        if (nextTime <= resolvedLoopStart) {
+          return resolvedLoopStart;
+        }
+
+        if (nextTime <= resolvedLoopEnd) {
           return nextTime;
         }
 
-        const loopDuration = loopRegion.end - loopRegion.start;
-        const overshoot = nextTime - loopRegion.start;
-        return loopRegion.start + (overshoot % loopDuration);
+        const loopDuration = resolvedLoopEnd - resolvedLoopStart;
+        const overshoot = nextTime - resolvedLoopStart;
+        return resolvedLoopStart + (overshoot % loopDuration);
       });
 
       if (shouldStop) {
@@ -88,19 +108,36 @@ export const useTransport = ({
       }
       lastFrameTimeRef.current = null;
     };
-  }, [isPlaying, loop, loopRegion, playbackRate, resolvedPlaybackEnd]);
+  }, [
+    hasValidLoopRegion,
+    isPlaying,
+    playbackRate,
+    resolvedLoopEnd,
+    resolvedLoopStart,
+    resolvedPlaybackEnd,
+  ]);
 
   return {
     currentTime,
     isPlaying,
     pause: () => setIsPlaying(false),
     play: () => setIsPlaying(true),
-    seek: (time: number) => setCurrentTime(clamp(time, 0, duration)),
-    setCurrentTime: (time: number) => setCurrentTime(clamp(time, 0, duration)),
+    seek: (time: number) =>
+      setCurrentTime(
+        hasValidLoopRegion
+          ? clamp(time, resolvedLoopStart, resolvedLoopEnd)
+          : clamp(time, 0, duration),
+      ),
+    setCurrentTime: (time: number) =>
+      setCurrentTime(
+        hasValidLoopRegion
+          ? clamp(time, resolvedLoopStart, resolvedLoopEnd)
+          : clamp(time, 0, duration),
+      ),
     setIsPlaying,
     stop: () => {
       setIsPlaying(false);
-      setCurrentTime(0);
+      setCurrentTime(hasValidLoopRegion ? resolvedLoopStart : 0);
     },
     toggle: () => setIsPlaying((playing) => !playing),
   };

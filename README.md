@@ -42,6 +42,7 @@ pnpm build
 ## Usage
 
 ```tsx
+import { useState } from 'react';
 import {
   Editor,
   Preview,
@@ -94,10 +95,17 @@ const renderClipContent = ({
     defaultContent
   );
 
+const [region, setRegion] = useState<{ start: number; end: number } | null>(
+  null,
+);
+const [loopEnabled, setLoopEnabled] = useState(false);
+
 const transport = useTransport({
   duration: 12,
   playbackEnd: 10.2,
   initialTime: 0,
+  loop: loopEnabled && region !== null && region.end > region.start,
+  loopRegion: region,
 });
 
 <Preview
@@ -113,9 +121,13 @@ const transport = useTransport({
   totalDuration={12}
   currentTime={transport.currentTime}
   isPlaying={transport.isPlaying}
+  loop={loopEnabled}
+  region={region}
   behavior={behavior}
   emptyState={<div>트랙을 추가하면 편집을 시작할 수 있습니다.</div>}
   renderClipContent={renderClipContent}
+  onLoopChange={setLoopEnabled}
+  onRegionChange={setRegion}
   onClipsChange={setClips}
   onTracksChange={setTracks}
   onSeek={transport.seek}
@@ -129,6 +141,7 @@ const transport = useTransport({
 
 - `useTransport`: playback state and controls
 - `useTransport.playbackEnd`: canvas 길이와 별도로 실제 재생 종료 시점을 지정
+- `useTransport.loop`, `useTransport.loopRegion`: 선택 region 기반 반복 재생
 - `useMediaPlayback`: HTMLMediaElement source sync + track volume/mute/solo + clip fade gain
 - `Preview`: 현재 시점의 비디오 레이어 합성 + source media playback
 - `isLoading`, `loadingFallback`: 상위 앱에서 async 초기화 중일 때 editor placeholder 표시
@@ -140,6 +153,8 @@ const transport = useTransport({
 - `behavior.selectClips`: selection rule override
 - `behavior.moveClip`: drag placement rule override
 - `behavior.resizeClip`: trim rule override
+- `region`, `onRegionChange`: ruler drag selection state 제어
+- `loop`, `onLoopChange`: toolbar의 region loop toggle 제어
 - `clip.mediaKind`, `clip.waveform`, `clip.posterUrl`: media rendering hints
 - video clip에 `cachedUrl` 또는 `originalUrl`이 있으면 clip 폭과 zoom에 맞춰 썸네일을 동적으로 생성하고 캐시함
 - `clip.thumbnails`: source media가 없거나 동적 생성이 실패했을 때 strip / preview fallback frame으로 사용 가능
