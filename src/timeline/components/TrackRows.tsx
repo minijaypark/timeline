@@ -10,6 +10,8 @@ import type {
   TimelineRegion,
   TimelineTrack,
 } from '../types';
+import { AudioWaveform } from './AudioWaveform';
+import { VideoThumbnailStrip } from './VideoThumbnailStrip';
 import {
   clamp,
   clipLeftPx,
@@ -20,33 +22,28 @@ import {
   isTrackAudible,
 } from '../utils';
 
-const renderDefaultClipContent = (clip: TimelineClip, visibleDuration: number) => {
-  const waveformBars = clip.waveform?.slice(0, 32) ?? [];
-
+const renderDefaultClipContent = (
+  clip: TimelineClip,
+  visibleDuration: number,
+  width: number,
+) => {
   return (
-    <div className="tl-clipBody" data-has-waveform={waveformBars.length > 0}>
-      <div className="tl-clipHeader">
-        <span className="tl-clipLabel">{clip.name}</span>
-        <div className="tl-clipMetaGroup">
-          {clip.mediaKind === 'video' ? (
-            <span className="tl-clipBadge">Video</span>
-          ) : null}
-          <span className="tl-clipMeta">{visibleDuration.toFixed(2)}s</span>
-        </div>
-      </div>
-      {waveformBars.length > 0 ? (
-        <div className="tl-waveform" aria-hidden="true">
-          {waveformBars.map((sample, index) => (
-            <span
-              key={`${clip.id}-${index}`}
-              className="tl-waveformBar"
-              style={{
-                height: `${Math.max(16, Math.min(100, sample * 100))}%`,
-              }}
-            />
-          ))}
-        </div>
+    <div className="tl-clipBody" data-media-kind={clip.mediaKind}>
+      {clip.mediaKind === 'video' ? (
+        <VideoThumbnailStrip clip={clip} width={width} />
       ) : null}
+      <div className="tl-clipInfo">
+        <div className="tl-clipHeader">
+          <span className="tl-clipLabel">{clip.name}</span>
+          <div className="tl-clipMetaGroup">
+            {clip.mediaKind === 'video' ? (
+              <span className="tl-clipBadge">Video</span>
+            ) : null}
+            <span className="tl-clipMeta">{visibleDuration.toFixed(2)}s</span>
+          </div>
+        </div>
+        {clip.mediaKind === 'audio' ? <AudioWaveform clip={clip} width={width} /> : null}
+      </div>
     </div>
   );
 };
@@ -56,6 +53,7 @@ export const TrackRows = ({
   contentWidth,
   currentTime,
   isPlaying,
+  onClipFadePointerDown,
   onClipPointerDown,
   onClipResizePointerDown,
   pxPerSec,
@@ -73,6 +71,11 @@ export const TrackRows = ({
   contentWidth: number;
   currentTime: number;
   isPlaying: boolean;
+  onClipFadePointerDown: (
+    event: ReactPointerEvent<HTMLDivElement>,
+    clip: TimelineClip,
+    edge: 'fade-in' | 'fade-out',
+  ) => void;
   onClipPointerDown: (
     event: ReactPointerEvent<HTMLDivElement>,
     trackId: string,
@@ -139,9 +142,21 @@ export const TrackRows = ({
                   width,
                   Math.max(0, (clip.fade?.out?.duration ?? 0) * pxPerSec),
                 );
+                const fadeHandleInset = Math.max(8, Math.min(width / 2, 12));
+                const fadeInHandleLeft = clamp(
+                  fadeInWidth,
+                  fadeHandleInset,
+                  Math.max(fadeHandleInset, width - fadeHandleInset),
+                );
+                const fadeOutHandleLeft = clamp(
+                  width - fadeOutWidth,
+                  fadeHandleInset,
+                  Math.max(fadeHandleInset, width - fadeHandleInset),
+                );
                 const defaultContent = renderDefaultClipContent(
                   clip,
                   visibleDuration,
+                  width,
                 );
 
                 return (
@@ -161,15 +176,17 @@ export const TrackRows = ({
                     }
                     onPointerDown={(event) => onClipPointerDown(event, track.id, clip)}
                   >
-                    {clip.mediaKind === 'video' && clip.posterUrl ? (
-                      <div
-                        className="tl-clipPoster"
-                        style={{ backgroundImage: `url(${clip.posterUrl})` }}
-                      />
-                    ) : null}
                     {fadeInWidth > 0 ? (
                       <div className="tl-fadeIn" style={{ width: fadeInWidth }} />
                     ) : null}
+                    <div
+                      className="tl-fadeHandle"
+                      data-side="in"
+                      style={{ left: fadeInHandleLeft }}
+                      onPointerDown={(event) =>
+                        onClipFadePointerDown(event, clip, 'fade-in')
+                      }
+                    />
                     {fadeOutWidth > 0 ? (
                       <div
                         className="tl-fadeOut"
@@ -179,6 +196,14 @@ export const TrackRows = ({
                         }}
                       />
                     ) : null}
+                    <div
+                      className="tl-fadeHandle"
+                      data-side="out"
+                      style={{ left: fadeOutHandleLeft }}
+                      onPointerDown={(event) =>
+                        onClipFadePointerDown(event, clip, 'fade-out')
+                      }
+                    />
                     {renderClip
                       ? renderClip({
                           clip,

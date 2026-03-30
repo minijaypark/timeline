@@ -43,6 +43,12 @@ type TimelineInteractionState =
       startClientX: number;
     }
   | {
+      type: 'fade-in' | 'fade-out';
+      clipId: string;
+      originClip: TimelineClip;
+      startClientX: number;
+    }
+  | {
       type: 'region';
       startTime: number;
       rulerElement: HTMLDivElement;
@@ -220,6 +226,49 @@ export const useInteractions = ({
         return;
       }
 
+      if (interaction.type === 'fade-in' || interaction.type === 'fade-out') {
+        const clip = interaction.originClip;
+        const timelineDuration = getClipTimelineDuration(clip);
+        const originFadeIn = clip.fade?.in?.duration ?? 0;
+        const originFadeOut = clip.fade?.out?.duration ?? 0;
+        const otherFadeDuration =
+          interaction.type === 'fade-in' ? originFadeOut : originFadeIn;
+        const maxFadeDuration = Math.max(
+          0,
+          timelineDuration - otherFadeDuration - MIN_TIMELINE_DURATION,
+        );
+        const originDuration =
+          interaction.type === 'fade-in' ? originFadeIn : originFadeOut;
+        const nextDuration = clamp(
+          interaction.type === 'fade-in'
+            ? originDuration + deltaX
+            : originDuration - deltaX,
+          0,
+          maxFadeDuration,
+        );
+        const nextFade = {
+          in:
+            interaction.type === 'fade-in'
+              ? nextDuration > 0
+                ? { duration: nextDuration }
+                : undefined
+              : clip.fade?.in,
+          out:
+            interaction.type === 'fade-out'
+              ? nextDuration > 0
+                ? { duration: nextDuration }
+                : undefined
+              : clip.fade?.out,
+        };
+
+        onClipsChange(
+          updateClipList(clips, interaction.clipId, {
+            fade: nextFade.in || nextFade.out ? nextFade : undefined,
+          }),
+        );
+        return;
+      }
+
       if (!tracksPanelRef.current) {
         return;
       }
@@ -343,6 +392,22 @@ export const useInteractions = ({
     }: {
       clip: TimelineClip;
       edge: 'resize-left' | 'resize-right';
+      event: ReactPointerEvent<HTMLDivElement>;
+    }) => {
+      setInteraction({
+        type: edge,
+        clipId: clip.id,
+        originClip: clip,
+        startClientX: event.clientX,
+      });
+    },
+    startClipFade: ({
+      clip,
+      edge,
+      event,
+    }: {
+      clip: TimelineClip;
+      edge: 'fade-in' | 'fade-out';
       event: ReactPointerEvent<HTMLDivElement>;
     }) => {
       setInteraction({

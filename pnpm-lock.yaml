@@ -14,6 +14,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
+      wavesurfer.js:
+        specifier: ^7.12.5
+        version: 7.12.5
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -388,6 +391,9 @@ packages:
       yaml:
         optional: true
 
+  wavesurfer.js@7.12.5:
+    resolution: {integrity: sha512-MSZcA13R9ZlxgYpzfakaSYf8dz5tCdZKYbjtN1qnKbCi+UoyfaTuhvjlXHrITi/fgeO3qWfsH7U3BP1AKnwRNg==}
+
 snapshots:
 
   '@emnapi/core@1.9.1':
@@ -607,3 +613,5 @@ snapshots:
       tinyglobby: 0.2.15
     optionalDependencies:
       fsevents: 2.3.3
+
+  wavesurfer.js@7.12.5: {}

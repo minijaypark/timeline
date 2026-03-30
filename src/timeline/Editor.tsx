@@ -81,21 +81,26 @@ export const Editor = ({
   });
   const clipsByTrack = useMemo(() => groupClipsByTrack(clips), [clips]);
   const soloTrackIds = useMemo(() => getSoloTrackIds(tracks), [tracks]);
-  const { tracksPanelRef, handleRulerPointerDown, startClipMove, startClipResize } =
-    useInteractions({
-      behavior,
-      clips,
-      gridSize,
-      onClipsChange,
-      onSeek,
-      pxPerSec,
-      resolvedRegion,
-      rowHeight,
-      setResolvedRegion,
-      snapToGrid,
-      totalDuration,
-      tracks,
-    });
+  const {
+    tracksPanelRef,
+    handleRulerPointerDown,
+    startClipMove,
+    startClipResize,
+    startClipFade,
+  } = useInteractions({
+    behavior,
+    clips,
+    gridSize,
+    onClipsChange,
+    onSeek,
+    pxPerSec,
+    resolvedRegion,
+    rowHeight,
+    setResolvedRegion,
+    snapToGrid,
+    totalDuration,
+    tracks,
+  });
 
   const rulerTicks = useMemo(() => {
     const ticks: Array<{ left: number; label?: string; strong: boolean }> = [];
@@ -251,6 +256,15 @@ export const Editor = ({
               }
               event.stopPropagation();
               startClipResize({ clip, edge, event });
+            }}
+            onClipFadePointerDown={(event, clip, edge) => {
+              handleSelectClip(event, clip.id);
+              if (!onClipsChange) {
+                return;
+              }
+              event.stopPropagation();
+              event.preventDefault();
+              startClipFade({ clip, edge, event });
             }}
             pxPerSec={pxPerSec}
             region={resolvedRegion}

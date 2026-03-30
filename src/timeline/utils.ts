@@ -53,6 +53,9 @@ export const getLabelInterval = (pxPerSec: number) => {
 export const getClipFillMode = (clip: TimelineClip): TimelineClipFillMode =>
   clip.fillMode ?? (clip.placeholderType ? 'placeholder' : 'trim');
 
+export const getClipSourceUrl = (clip: TimelineClip) =>
+  clip.cachedUrl ?? clip.originalUrl ?? null;
+
 export const getClipPlaybackRate = (clip: TimelineClip) =>
   clip.playbackRate > 0 ? clip.playbackRate : 1;
 
@@ -73,6 +76,50 @@ export const getClipTimelineDuration = (clip: TimelineClip) => {
     return clip.timelineDuration;
   }
   return getClipTrimmedSourceDuration(clip) / getClipPlaybackRate(clip);
+};
+
+export const getClipPlaybackPosition = (
+  clip: TimelineClip,
+  currentTime: number,
+) => {
+  const timelineOffset = currentTime - clipTimelineStart(clip);
+  const timelineDuration = getClipTimelineDuration(clip);
+  const sourceStart = getClipSourceStart(clip);
+  const sourceEnd = getClipSourceEnd(clip);
+  const trimmedDuration = getClipTrimmedSourceDuration(clip);
+
+  if (timelineOffset < 0 || timelineOffset > timelineDuration) {
+    return null;
+  }
+
+  if (trimmedDuration <= 0) {
+    return sourceStart;
+  }
+
+  if (clip.fillMode === 'loop') {
+    const loopOffset = (timelineOffset * getClipPlaybackRate(clip)) % trimmedDuration;
+    return sourceStart + loopOffset;
+  }
+
+  if (clip.fillMode === 'stretch') {
+    const ratio = timelineDuration <= 0 ? 0 : timelineOffset / timelineDuration;
+    return sourceStart + ratio * trimmedDuration;
+  }
+
+  return clamp(
+    sourceStart + timelineOffset * getClipPlaybackRate(clip),
+    sourceStart,
+    sourceEnd,
+  );
+};
+
+export const getElementPlaybackRate = (clip: TimelineClip) => {
+  if (clip.fillMode !== 'stretch') {
+    return getClipPlaybackRate(clip);
+  }
+
+  const timelineDuration = Math.max(getClipTimelineDuration(clip), 0.01);
+  return getClipTrimmedSourceDuration(clip) / timelineDuration;
 };
 
 export const clipTimelineStart = (clip: TimelineClip) =>
@@ -167,6 +214,53 @@ export const isTrackAudible = (track: TimelineTrack, soloTrackIds: string[]) => 
 
 export const isClipActiveAtTime = (clip: TimelineClip, currentTime: number) =>
   currentTime >= clipTimelineStart(clip) && currentTime <= clipTimelineEnd(clip);
+
+const getTrackOrder = (trackId: string, tracks: TimelineTrack[]) => {
+  const index = tracks.findIndex((track) => track.id === trackId);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+};
+
+export const compareVisualLayerOrder = (
+  left: TimelineClip,
+  right: TimelineClip,
+  tracks: TimelineTrack[],
+) => {
+  const trackOrderDiff =
+    getTrackOrder(right.trackId, tracks) - getTrackOrder(left.trackId, tracks);
+
+  if (trackOrderDiff !== 0) {
+    return trackOrderDiff;
+  }
+
+  const timelineStartDiff = clipTimelineStart(left) - clipTimelineStart(right);
+  if (timelineStartDiff !== 0) {
+    return timelineStartDiff;
+  }
+
+  const updatedAtDiff =
+    new Date(left.updatedAt ?? 0).getTime() - new Date(right.updatedAt ?? 0).getTime();
+
+  if (updatedAtDiff !== 0) {
+    return updatedAtDiff;
+  }
+
+  return left.id.localeCompare(right.id);
+};
+
+export const getActiveVideoClips = ({
+  clips,
+  tracks,
+  currentTime,
+}: {
+  clips: TimelineClip[];
+  tracks: TimelineTrack[];
+  currentTime: number;
+}) =>
+  clips
+    .filter(
+      (clip) => clip.mediaKind === 'video' && isClipActiveAtTime(clip, currentTime),
+    )
+    .sort((left, right) => compareVisualLayerOrder(left, right, tracks));
 
 export const regionWidth = (region: TimelineRegion, pxPerSec: number) =>
   Math.max(0, region.end - region.start) * pxPerSec;

@@ -60,6 +60,7 @@ export interface TimelineClip {
   mediaKind?: TimelineClipMediaKind;
   waveform?: number[];
   posterUrl?: string;
+  thumbnails?: TimelineClipThumbnail[];
   fade?: {
     in?: {
       duration: number;
@@ -68,6 +69,11 @@ export interface TimelineClip {
       duration: number;
     };
   };
+}
+
+export interface TimelineClipThumbnail {
+  url: string;
+  time: number;
 }
 
 export interface TimelineVideoInfo {
@@ -180,6 +186,17 @@ export interface TimelineEditorProps {
   onStop?: () => void;
 }
 
+export interface TimelinePreviewProps {
+  tracks: TimelineTrack[];
+  clips: TimelineClip[];
+  currentTime: number;
+  isPlaying?: boolean;
+  className?: string;
+  style?: CSSProperties;
+  aspectRatio?: number | string;
+  emptyState?: ReactNode;
+}
+
 type TimelineClipLegacyTimingInput = {
   startOffset: number;
   duration: number;
@@ -266,6 +283,7 @@ export const createClip = (
     mediaKind: partial.mediaKind ?? 'audio',
     waveform: partial.waveform,
     posterUrl: partial.posterUrl,
+    thumbnails: partial.thumbnails,
     fade: partial.fade,
   };
 };

@@ -1,4 +1,6 @@
 export { Editor } from './timeline/Editor';
+export { Preview } from './timeline/Preview';
+export { useMediaPlayback } from './timeline/useMediaPlayback';
 export { useTransport } from './timeline/useTransport';
 export {
   CLIP_TYPE,
@@ -10,12 +12,14 @@ export type {
   TimelineClip,
   TimelineClipFillMode,
   TimelineClipMediaKind,
+  TimelineClipThumbnail,
   TimelineClipMoveArgs,
   TimelineClipRenderArgs,
   TimelineClipResizeArgs,
   TimelineClipSelectionArgs,
   TimelineEditorBehavior,
   TimelineEditorProps,
+  TimelinePreviewProps,
   TimelineRegion,
   TimelineTrack,
   TimelineTrackHeaderRenderArgs,

@@ -4,6 +4,7 @@ import { clamp } from './utils';
 
 export const useTransport = ({
   duration,
+  playbackEnd = duration,
   initialTime = 0,
   initialPlaying = false,
   loop = false,
@@ -11,12 +12,14 @@ export const useTransport = ({
   playbackRate = 1,
 }: {
   duration: number;
+  playbackEnd?: number;
   initialTime?: number;
   initialPlaying?: boolean;
   loop?: boolean;
   loopRegion?: TimelineRegion | null;
   playbackRate?: number;
 }) => {
+  const resolvedPlaybackEnd = clamp(playbackEnd, 0, duration);
   const [currentTime, setCurrentTime] = useState(() =>
     clamp(initialTime, 0, duration),
   );
@@ -52,9 +55,9 @@ export const useTransport = ({
       setCurrentTime((time) => {
         const nextTime = time + deltaSeconds;
         if (!loop || !loopRegion || loopRegion.end <= loopRegion.start) {
-          if (nextTime >= duration) {
+          if (nextTime >= resolvedPlaybackEnd) {
             shouldStop = true;
-            return duration;
+            return resolvedPlaybackEnd;
           }
           return nextTime;
         }
@@ -85,7 +88,7 @@ export const useTransport = ({
       }
       lastFrameTimeRef.current = null;
     };
-  }, [duration, isPlaying, loop, loopRegion, playbackRate]);
+  }, [isPlaying, loop, loopRegion, playbackRate, resolvedPlaybackEnd]);
 
   return {
     currentTime,
