@@ -114,12 +114,22 @@ export default function App() {
         fillMode: clip.fillMode,
         mediaKind: clip.mediaKind,
         hasSource: Boolean(clip.cachedUrl ?? clip.originalUrl),
+        thumbnailStrategy:
+          clip.mediaKind !== 'video'
+            ? 'n/a'
+            : clip.cachedUrl ?? clip.originalUrl
+              ? 'dynamic-from-source'
+              : clip.thumbnails?.length
+                ? 'provided-thumbnails'
+                : clip.posterUrl
+                  ? 'poster-fallback'
+                  : 'none',
         timelineStart: Number(clip.timelineStart.toFixed(2)),
         timelineDuration: Number(clip.timelineDuration.toFixed(2)),
         sourceStart: Number(clip.sourceStart.toFixed(2)),
         sourceEnd: Number(clip.sourceEnd.toFixed(2)),
         sourceDuration: Number(clip.sourceDuration.toFixed(2)),
-        thumbnailCount: clip.thumbnails?.length ?? 0,
+        thumbnailHintCount: clip.thumbnails?.length ?? 0,
       })),
     [clips],
   );

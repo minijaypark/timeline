@@ -160,7 +160,6 @@ export const useMediaUploads = ({
               originalUrl: asset.originalUrl,
               cachedUrl: asset.cachedUrl,
               posterUrl: asset.posterUrl,
-              thumbnails: asset.thumbnails,
             }),
           );
         }

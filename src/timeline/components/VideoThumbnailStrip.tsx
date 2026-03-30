@@ -1,5 +1,13 @@
+import { useEffect, useState } from 'react';
 import type { TimelineClip, TimelineClipThumbnail } from '../types';
-import { clamp, getClipFillMode } from '../utils';
+import { clamp, getClipFillMode, getClipSourceDuration, getClipSourceUrl } from '../utils';
+import {
+  filterThumbnailsForInterval,
+  generateThumbnailEntry,
+  getCachedThumbnailEntry,
+  getSmallestCachedThumbnailInterval,
+  getTargetThumbnailInterval,
+} from '../videoThumbnailCache';
 
 const DEFAULT_THUMBNAIL_WIDTH_PX = 56;
 const MIN_THUMBNAIL_WIDTH_PX = 36;
@@ -60,13 +68,12 @@ const buildTimestampFrames = (
 };
 
 const getFrames = (clip: TimelineClip, width: number) => {
-  const renderFullSource = getClipFillMode(clip) === 'trim';
-
   if (width <= 0) {
     return [];
   }
 
   if (clip.thumbnails && clip.thumbnails.length > 0) {
+    const renderFullSource = getClipFillMode(clip) === 'trim';
     const frames = buildTimestampFrames(
       clip.thumbnails,
       clip,
@@ -94,7 +101,91 @@ export const VideoThumbnailStrip = ({
   fullWidth: number;
   viewportOffset?: number;
 }) => {
-  const frames = getFrames(clip, fullWidth);
+  const sourceUrl = getClipSourceUrl(clip);
+  const renderFullSource = getClipFillMode(clip) === 'trim';
+  const sourceSpan = renderFullSource
+    ? Math.max(getClipSourceDuration(clip), 0)
+    : Math.max(0, clip.sourceEnd - clip.sourceStart);
+  const [generatedThumbnailState, setGeneratedThumbnailState] = useState<{
+    sourceUrl: string;
+    thumbnails: TimelineClipThumbnail[];
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!sourceUrl || fullWidth <= 0 || sourceSpan <= 0) {
+      setGeneratedThumbnailState(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const targetInterval = getTargetThumbnailInterval(fullWidth, sourceSpan);
+    const smallestCachedInterval = getSmallestCachedThumbnailInterval(sourceUrl);
+
+    if (
+      smallestCachedInterval !== null &&
+      smallestCachedInterval <= targetInterval
+    ) {
+      const cached = getCachedThumbnailEntry(sourceUrl, smallestCachedInterval);
+
+      if (cached) {
+        setGeneratedThumbnailState({
+          sourceUrl,
+          thumbnails: filterThumbnailsForInterval(
+            cached.thumbnails,
+            targetInterval,
+            cached.duration,
+          ),
+        });
+        return () => {
+          cancelled = true;
+        };
+      }
+    }
+
+    setGeneratedThumbnailState((current) =>
+      current?.sourceUrl === sourceUrl ? current : null,
+    );
+
+    generateThumbnailEntry({
+      sourceUrl,
+      interval: targetInterval,
+    })
+      .then((entry) => {
+        if (cancelled) {
+          return;
+        }
+
+        setGeneratedThumbnailState({
+          sourceUrl,
+          thumbnails: filterThumbnailsForInterval(
+            entry.thumbnails,
+            targetInterval,
+            entry.duration,
+          ),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGeneratedThumbnailState(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fullWidth, sourceSpan, sourceUrl]);
+
+  const generatedThumbnails =
+    generatedThumbnailState?.sourceUrl === sourceUrl
+      ? generatedThumbnailState.thumbnails
+      : null;
+  const frames = getFrames(
+    generatedThumbnails ? { ...clip, thumbnails: generatedThumbnails } : clip,
+    fullWidth,
+  );
 
   if (frames.length === 0) {
     return null;

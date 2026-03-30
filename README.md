@@ -141,7 +141,8 @@ const transport = useTransport({
 - `behavior.moveClip`: drag placement rule override
 - `behavior.resizeClip`: trim rule override
 - `clip.mediaKind`, `clip.waveform`, `clip.posterUrl`: media rendering hints
-- `clip.thumbnails`: 비디오 클립 썸네일 스트립 / preview fallback frame
+- video clip에 `cachedUrl` 또는 `originalUrl`이 있으면 clip 폭과 zoom에 맞춰 썸네일을 동적으로 생성하고 캐시함
+- `clip.thumbnails`: source media가 없거나 동적 생성이 실패했을 때 strip / preview fallback frame으로 사용 가능
 - audio clip에 `cachedUrl` 또는 `originalUrl`이 있으면 실제 오디오 peak를 읽고, 없으면 `clip.waveform`으로 fallback
 
 ### Editor Shortcuts

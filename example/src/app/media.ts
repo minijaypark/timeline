@@ -1,16 +1,10 @@
 import {
   type TimelineClipMediaKind,
-  type TimelineClipThumbnail,
 } from '@minijay/timeline';
-
-const MAX_VIDEO_THUMBNAILS = 8;
 
 export const UPLOAD_GAP = 0.4;
 export const UPLOAD_AUDIO_TRACK_ID = 'uploads-audio';
 export const UPLOAD_VIDEO_TRACK_ID = 'uploads-video';
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
 
 const getBaseName = (fileName: string) =>
   fileName.replace(/\.[^.]+$/, '') || fileName;
@@ -49,66 +43,6 @@ const captureVideoPoster = (video: HTMLVideoElement) => {
   return canvas.toDataURL('image/jpeg', 0.82);
 };
 
-const getVideoThumbnailTimestamps = (duration: number) => {
-  const safeDuration = Math.max(duration, 0);
-  const maxTimestamp = Math.max(safeDuration - 0.05, 0);
-  const count = clamp(Math.ceil(Math.max(safeDuration, 1) / 2), 1, MAX_VIDEO_THUMBNAILS);
-
-  if (count === 1 || maxTimestamp === 0) {
-    return [0];
-  }
-
-  return Array.from({ length: count }, (_, index) =>
-    Number(((maxTimestamp * index) / (count - 1)).toFixed(3)),
-  );
-};
-
-const seekVideo = (video: HTMLVideoElement, time: number) =>
-  new Promise<void>((resolve, reject) => {
-    if (Math.abs(video.currentTime - time) < 0.01) {
-      resolve();
-      return;
-    }
-
-    const handleSeeked = () => {
-      cleanup();
-      resolve();
-    };
-    const handleError = () => {
-      cleanup();
-      reject(new Error('video seek failed'));
-    };
-    const cleanup = () => {
-      video.removeEventListener('seeked', handleSeeked);
-      video.removeEventListener('error', handleError);
-    };
-
-    video.addEventListener('seeked', handleSeeked);
-    video.addEventListener('error', handleError);
-    video.currentTime = time;
-  });
-
-const captureVideoThumbnails = async (
-  video: HTMLVideoElement,
-  duration: number,
-) => {
-  const timestamps = getVideoThumbnailTimestamps(duration);
-  const thumbnails: TimelineClipThumbnail[] = [];
-
-  for (const time of timestamps) {
-    await seekVideo(video, time);
-    const url = captureVideoPoster(video);
-
-    if (!url) {
-      continue;
-    }
-
-    thumbnails.push({ time, url });
-  }
-
-  return thumbnails;
-};
-
 export type LoadedMediaAsset = {
   id: string;
   mediaKind: TimelineClipMediaKind;
@@ -116,7 +50,6 @@ export type LoadedMediaAsset = {
   originalUrl: string;
   cachedUrl: string;
   posterUrl?: string;
-  thumbnails?: TimelineClipThumbnail[];
   sourceDuration: number;
   color: string;
 };
@@ -133,7 +66,6 @@ export const loadMediaAsset = async (
   const metadata = await new Promise<{
     duration: number;
     posterUrl?: string;
-    thumbnails?: TimelineClipThumbnail[];
   }>((resolve, reject) => {
     const handleError = () => {
       reject(new Error(`${file.name} metadata를 읽을 수 없습니다.`));
@@ -157,12 +89,10 @@ export const loadMediaAsset = async (
         try {
           const duration = Number.isFinite(video.duration) ? video.duration : 0;
           const posterUrl = captureVideoPoster(video);
-          const thumbnails = await captureVideoThumbnails(video, duration);
 
           resolve({
             duration,
             posterUrl,
-            thumbnails: thumbnails.length > 0 ? thumbnails : undefined,
           });
         } catch {
           handleError();
@@ -208,7 +138,6 @@ export const loadMediaAsset = async (
     originalUrl: url,
     cachedUrl: url,
     posterUrl: metadata.posterUrl,
-    thumbnails: metadata.thumbnails,
     sourceDuration: Math.max(metadata.duration, 0.01),
     color: hashToColor(`${file.name}-${file.size}`),
   };
