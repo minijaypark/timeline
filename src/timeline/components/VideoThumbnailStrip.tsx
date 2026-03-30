@@ -1,5 +1,5 @@
 import type { TimelineClip, TimelineClipThumbnail } from '../types';
-import { clamp } from '../utils';
+import { clamp, getClipFillMode } from '../utils';
 
 const DEFAULT_THUMBNAIL_WIDTH_PX = 56;
 const MIN_THUMBNAIL_WIDTH_PX = 36;
@@ -25,9 +25,12 @@ const buildTimestampFrames = (
   thumbnails: TimelineClipThumbnail[],
   clip: TimelineClip,
   width: number,
+  renderFullSource: boolean,
 ) => {
-  const sourceStart = clip.sourceStart;
-  const sourceEnd = Math.max(sourceStart, clip.sourceEnd);
+  const sourceStart = renderFullSource ? 0 : clip.sourceStart;
+  const sourceEnd = renderFullSource
+    ? Math.max(sourceStart, clip.sourceDuration)
+    : Math.max(sourceStart, clip.sourceEnd);
   const sourceSpan = Math.max(0.001, sourceEnd - sourceStart);
   const visibleThumbnails = thumbnails
     .filter((thumbnail) => thumbnail.time >= sourceStart && thumbnail.time <= sourceEnd)
@@ -57,12 +60,19 @@ const buildTimestampFrames = (
 };
 
 const getFrames = (clip: TimelineClip, width: number) => {
+  const renderFullSource = getClipFillMode(clip) === 'trim';
+
   if (width <= 0) {
     return [];
   }
 
   if (clip.thumbnails && clip.thumbnails.length > 0) {
-    const frames = buildTimestampFrames(clip.thumbnails, clip, width);
+    const frames = buildTimestampFrames(
+      clip.thumbnails,
+      clip,
+      width,
+      renderFullSource,
+    );
     if (frames.length > 0) {
       return frames;
     }
@@ -77,19 +87,28 @@ const getFrames = (clip: TimelineClip, width: number) => {
 
 export const VideoThumbnailStrip = ({
   clip,
-  width,
+  fullWidth,
+  viewportOffset = 0,
 }: {
   clip: TimelineClip;
-  width: number;
+  fullWidth: number;
+  viewportOffset?: number;
 }) => {
-  const frames = getFrames(clip, width);
+  const frames = getFrames(clip, fullWidth);
 
   if (frames.length === 0) {
     return null;
   }
 
   return (
-    <div className="tl-videoStrip" aria-hidden="true">
+    <div
+      className="tl-videoStrip"
+      aria-hidden="true"
+      style={{
+        left: -viewportOffset,
+        width: fullWidth,
+      }}
+    >
       {frames.map((frame) => (
         <div
           key={frame.key}

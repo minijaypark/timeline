@@ -14,35 +14,60 @@ import { AudioWaveform } from './AudioWaveform';
 import { VideoThumbnailStrip } from './VideoThumbnailStrip';
 import {
   clamp,
-  clipLeftPx,
   clipVisibleDuration,
+  clipVisibleOffsetPx,
+  clipVisualLeftPx,
+  clipVisualWidthPx,
   clipWidthPx,
-  MIN_CLIP_WIDTH_PX,
+  getClipFillMode,
   isClipActiveAtTime,
   isTrackAudible,
 } from '../utils';
 
 const renderDefaultClipContent = (
   clip: TimelineClip,
+  isSelected: boolean,
+  isActive: boolean,
   visibleDuration: number,
-  width: number,
+  visibleWidth: number,
+  visibleLeft: number,
+  fullWidth: number,
 ) => {
   return (
-    <div className="tl-clipBody" data-media-kind={clip.mediaKind}>
-      {clip.mediaKind === 'video' ? (
-        <VideoThumbnailStrip clip={clip} width={width} />
-      ) : null}
-      <div className="tl-clipInfo">
-        <div className="tl-clipHeader">
-          <span className="tl-clipLabel">{clip.name}</span>
-          <div className="tl-clipMetaGroup">
-            {clip.mediaKind === 'video' ? (
-              <span className="tl-clipBadge">Video</span>
-            ) : null}
-            <span className="tl-clipMeta">{visibleDuration.toFixed(2)}s</span>
+    <div
+      className="tl-clipBody"
+      data-selected={isSelected}
+      data-active={isActive}
+      data-media-kind={clip.mediaKind}
+      style={{ left: visibleLeft, width: visibleWidth }}
+    >
+      <div className="tl-clipBodyInner">
+        {clip.mediaKind === 'video' ? (
+          <VideoThumbnailStrip
+            clip={clip}
+            fullWidth={fullWidth}
+            viewportOffset={visibleLeft}
+          />
+        ) : null}
+        <div className="tl-clipInfo">
+          <div className="tl-clipHeader">
+            <span className="tl-clipLabel">{clip.name}</span>
+            <div className="tl-clipMetaGroup">
+              {clip.mediaKind === 'video' ? (
+                <span className="tl-clipBadge">Video</span>
+              ) : null}
+              <span className="tl-clipMeta">{visibleDuration.toFixed(2)}s</span>
+            </div>
           </div>
+          {clip.mediaKind === 'audio' ? (
+            <AudioWaveform
+              clip={clip}
+              fullWidth={fullWidth}
+              renderFullSource={getClipFillMode(clip) === 'trim'}
+              viewportOffset={visibleLeft}
+            />
+          ) : null}
         </div>
-        {clip.mediaKind === 'audio' ? <AudioWaveform clip={clip} width={width} /> : null}
       </div>
     </div>
   );
@@ -131,31 +156,47 @@ export const TrackRows = ({
                 const selected = selectedClipIds.includes(clip.id);
                 const active =
                   isPlaying && !disabled && isClipActiveAtTime(clip, currentTime);
-                const width = clipWidthPx(clip, pxPerSec);
-                const left = clipLeftPx(clip, pxPerSec);
+                const width = clipVisualWidthPx(clip, pxPerSec);
+                const left = clipVisualLeftPx(clip, pxPerSec);
                 const visibleDuration = clipVisibleDuration(clip);
+                const visibleWidth = clipWidthPx(clip, pxPerSec);
+                const visibleLeft = clipVisibleOffsetPx(clip, pxPerSec);
                 const fadeInWidth = Math.min(
-                  width,
+                  visibleWidth,
                   Math.max(0, (clip.fade?.in?.duration ?? 0) * pxPerSec),
                 );
                 const fadeOutWidth = Math.min(
-                  width,
+                  visibleWidth,
                   Math.max(0, (clip.fade?.out?.duration ?? 0) * pxPerSec),
                 );
-                const fadeHandleInset = Math.max(8, Math.min(width / 2, 12));
+                const fadeHandleInset = Math.max(
+                  8,
+                  Math.min(Math.max(visibleWidth, 0) / 2, 12),
+                );
+                const visibleRight = visibleLeft + visibleWidth;
                 const fadeInHandleLeft = clamp(
-                  fadeInWidth,
-                  fadeHandleInset,
-                  Math.max(fadeHandleInset, width - fadeHandleInset),
+                  visibleLeft + fadeInWidth,
+                  visibleLeft + fadeHandleInset,
+                  Math.max(
+                    visibleLeft + fadeHandleInset,
+                    visibleRight - fadeHandleInset,
+                  ),
                 );
                 const fadeOutHandleLeft = clamp(
-                  width - fadeOutWidth,
-                  fadeHandleInset,
-                  Math.max(fadeHandleInset, width - fadeHandleInset),
+                  visibleRight - fadeOutWidth,
+                  visibleLeft + fadeHandleInset,
+                  Math.max(
+                    visibleLeft + fadeHandleInset,
+                    visibleRight - fadeHandleInset,
+                  ),
                 );
                 const defaultContent = renderDefaultClipContent(
                   clip,
+                  selected,
+                  active,
                   visibleDuration,
+                  visibleWidth,
+                  visibleLeft,
                   width,
                 );
 
@@ -170,14 +211,16 @@ export const TrackRows = ({
                         left,
                         width,
                         ['--clip-color' as string]: clip.color,
-                        ['--clip-min-width' as string]: `${MIN_CLIP_WIDTH_PX}px`,
                         opacity: disabled ? 0.48 : 1,
                       } as CSSProperties
                     }
                     onPointerDown={(event) => onClipPointerDown(event, track.id, clip)}
                   >
                     {fadeInWidth > 0 ? (
-                      <div className="tl-fadeIn" style={{ width: fadeInWidth }} />
+                      <div
+                        className="tl-fadeIn"
+                        style={{ left: visibleLeft, width: fadeInWidth }}
+                      />
                     ) : null}
                     <div
                       className="tl-fadeHandle"
@@ -191,8 +234,8 @@ export const TrackRows = ({
                       <div
                         className="tl-fadeOut"
                         style={{
+                          left: visibleRight - fadeOutWidth,
                           width: fadeOutWidth,
-                          left: width - fadeOutWidth,
                         }}
                       />
                     ) : null}
@@ -215,6 +258,7 @@ export const TrackRows = ({
                     <div
                       className="tl-clipHandle"
                       data-side="left"
+                      style={{ left: visibleLeft }}
                       onPointerDown={(event) =>
                         onClipResizePointerDown(event, clip, 'resize-left')
                       }
@@ -222,6 +266,7 @@ export const TrackRows = ({
                     <div
                       className="tl-clipHandle"
                       data-side="right"
+                      style={{ left: visibleRight }}
                       onPointerDown={(event) =>
                         onClipResizePointerDown(event, clip, 'resize-right')
                       }

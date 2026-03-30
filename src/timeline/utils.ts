@@ -128,14 +128,47 @@ export const clipTimelineStart = (clip: TimelineClip) =>
 export const clipVisibleDuration = (clip: TimelineClip) =>
   Math.max(0, getClipTimelineDuration(clip));
 
+export const clipVisualStart = (clip: TimelineClip) => {
+  if (getClipFillMode(clip) !== 'trim') {
+    return clipTimelineStart(clip);
+  }
+
+  return clipTimelineStart(clip) - getClipSourceStart(clip) / getClipPlaybackRate(clip);
+};
+
+export const clipVisualDuration = (clip: TimelineClip) => {
+  if (getClipFillMode(clip) !== 'trim') {
+    return clipVisibleDuration(clip);
+  }
+
+  return Math.max(0, getClipSourceDuration(clip) / getClipPlaybackRate(clip));
+};
+
+export const clipVisibleOffset = (clip: TimelineClip) => {
+  if (getClipFillMode(clip) !== 'trim') {
+    return 0;
+  }
+
+  return Math.max(0, getClipSourceStart(clip) / getClipPlaybackRate(clip));
+};
+
 export const clipTimelineEnd = (clip: TimelineClip) =>
   clipTimelineStart(clip) + clipVisibleDuration(clip);
 
 export const clipWidthPx = (clip: TimelineClip, pxPerSec: number) =>
   Math.max(MIN_CLIP_WIDTH_PX, clipVisibleDuration(clip) * pxPerSec);
 
+export const clipVisualWidthPx = (clip: TimelineClip, pxPerSec: number) =>
+  Math.max(MIN_CLIP_WIDTH_PX, clipVisualDuration(clip) * pxPerSec);
+
 export const clipLeftPx = (clip: TimelineClip, pxPerSec: number) =>
   clipTimelineStart(clip) * pxPerSec;
+
+export const clipVisualLeftPx = (clip: TimelineClip, pxPerSec: number) =>
+  clipVisualStart(clip) * pxPerSec;
+
+export const clipVisibleOffsetPx = (clip: TimelineClip, pxPerSec: number) =>
+  clipVisibleOffset(clip) * pxPerSec;
 
 export const groupClipsByTrack = (clips: TimelineClip[]) => {
   const map = new Map<string, TimelineClip[]>();

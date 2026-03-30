@@ -225,6 +225,15 @@
 }
 
 .tl-clip {
+  cursor: grab;
+  height: calc(var(--tl-row-height) - 20px);
+  left: 0;
+  position: absolute;
+  top: 10px;
+  user-select: none;
+}
+
+.tl-clipBody {
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--clip-color) 85%, white) 0%,
@@ -234,27 +243,24 @@
   border-radius: 12px;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
   color: white;
-  cursor: grab;
-  height: calc(var(--tl-row-height) - 20px);
-  left: 0;
+  height: 100%;
+  min-width: 0;
   overflow: hidden;
   position: absolute;
-  top: 10px;
-  user-select: none;
+  top: 0;
 }
 
-.tl-clip[data-selected='true'] {
+.tl-clipBody[data-selected='true'] {
   box-shadow: 0 0 0 2px var(--tl-selection-border), 0 10px 24px rgba(30, 41, 59, 0.18);
 }
 
-.tl-clip[data-active='true'] {
+.tl-clipBody[data-active='true'] {
   outline: 2px solid rgba(255, 255, 255, 0.32);
   outline-offset: -2px;
 }
 
-.tl-clipBody {
+.tl-clipBodyInner {
   height: 100%;
-  overflow: hidden;
   position: relative;
   z-index: 1;
 }
@@ -319,10 +325,12 @@
 }
 
 .tl-videoStrip {
-  inset: 0;
+  bottom: 0;
+  left: 0;
   overflow: hidden;
   pointer-events: none;
   position: absolute;
+  top: 0;
 }
 
 .tl-videoFrame {
@@ -347,7 +355,9 @@
   grid-auto-columns: minmax(1px, 1fr);
   grid-auto-flow: column;
   height: 18px;
+  left: 0;
   min-width: 0;
+  position: relative;
 }
 
 .tl-waveformBar {
@@ -362,16 +372,9 @@
   cursor: ew-resize;
   position: absolute;
   top: 0;
+  transform: translateX(-50%);
   width: 10px;
   z-index: 2;
-}
-
-.tl-clipHandle[data-side='left'] {
-  left: 0;
-}
-
-.tl-clipHandle[data-side='right'] {
-  right: 0;
 }
 
 .tl-fadeIn,

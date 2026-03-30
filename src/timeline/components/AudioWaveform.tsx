@@ -114,6 +114,22 @@ const getFallbackWaveform = (waveform: number[] | undefined, width: number) => {
   });
 };
 
+const getFullSourceWaveform = (
+  peaks: number[],
+  sourceDuration: number,
+  width: number,
+) => {
+  if (peaks.length === 0 || sourceDuration <= 0 || width <= 0) {
+    return [];
+  }
+
+  const pointCount = getDisplayPointCount(width);
+  return Array.from({ length: pointCount }, (_, index) => {
+    const ratio = pointCount === 1 ? 0 : index / (pointCount - 1);
+    return getSourceSample(peaks, ratio * sourceDuration, sourceDuration);
+  });
+};
+
 const getClipWaveform = (clip: TimelineClip, peaks: number[], width: number) => {
   if (peaks.length === 0 || width <= 0) {
     return [];
@@ -153,10 +169,14 @@ const getClipWaveform = (clip: TimelineClip, peaks: number[], width: number) => 
 
 export const AudioWaveform = ({
   clip,
-  width,
+  fullWidth,
+  renderFullSource = false,
+  viewportOffset = 0,
 }: {
   clip: TimelineClip;
-  width: number;
+  fullWidth: number;
+  renderFullSource?: boolean;
+  viewportOffset?: number;
 }) => {
   const sourceUrl = clip.cachedUrl ?? clip.originalUrl;
   const [peaks, setPeaks] = useState<number[] | null>(null);
@@ -189,14 +209,16 @@ export const AudioWaveform = ({
 
   const samples = useMemo(() => {
     if (peaks && peaks.length > 0) {
-      const actual = getClipWaveform(clip, peaks, width);
+      const actual = renderFullSource
+        ? getFullSourceWaveform(peaks, getClipSourceDuration(clip), fullWidth)
+        : getClipWaveform(clip, peaks, fullWidth);
       if (actual.length > 0) {
         return actual;
       }
     }
 
-    return getFallbackWaveform(clip.waveform, width);
-  }, [clip, peaks, width]);
+    return getFallbackWaveform(clip.waveform, fullWidth);
+  }, [clip, fullWidth, peaks, renderFullSource]);
 
   if (samples.length === 0) {
     return null;
@@ -206,7 +228,16 @@ export const AudioWaveform = ({
     <div
       className="tl-waveform"
       data-waveform-source={peaks && peaks.length > 0 ? 'actual' : 'fallback'}
+      data-render-mode={
+        renderFullSource && getClipFillMode(clip) === 'trim'
+          ? 'full-source'
+          : 'visible-source'
+      }
       aria-hidden="true"
+      style={{
+        left: renderFullSource ? -viewportOffset : 0,
+        width: fullWidth,
+      }}
     >
       {samples.map((sample, index) => (
         <span
