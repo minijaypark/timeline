@@ -216,20 +216,20 @@ export const TrackRows = ({
                     }
                     onPointerDown={(event) => onClipPointerDown(event, track.id, clip)}
                   >
+                    {renderClip
+                      ? renderClip({
+                          clip,
+                          isSelected: selected,
+                          isActive: active,
+                          defaultContent,
+                        })
+                      : defaultContent}
                     {fadeInWidth > 0 ? (
                       <div
                         className="tl-fadeIn"
                         style={{ left: visibleLeft, width: fadeInWidth }}
                       />
                     ) : null}
-                    <div
-                      className="tl-fadeHandle"
-                      data-side="in"
-                      style={{ left: fadeInHandleLeft }}
-                      onPointerDown={(event) =>
-                        onClipFadePointerDown(event, clip, 'fade-in')
-                      }
-                    />
                     {fadeOutWidth > 0 ? (
                       <div
                         className="tl-fadeOut"
@@ -241,20 +241,20 @@ export const TrackRows = ({
                     ) : null}
                     <div
                       className="tl-fadeHandle"
+                      data-side="in"
+                      style={{ left: fadeInHandleLeft }}
+                      onPointerDown={(event) =>
+                        onClipFadePointerDown(event, clip, 'fade-in')
+                      }
+                    />
+                    <div
+                      className="tl-fadeHandle"
                       data-side="out"
                       style={{ left: fadeOutHandleLeft }}
                       onPointerDown={(event) =>
                         onClipFadePointerDown(event, clip, 'fade-out')
                       }
                     />
-                    {renderClip
-                      ? renderClip({
-                          clip,
-                          isSelected: selected,
-                          isActive: active,
-                          defaultContent,
-                        })
-                      : defaultContent}
                     <div
                       className="tl-clipHandle"
                       data-side="left"
