@@ -202,9 +202,55 @@ export const updateClipList = (
 ) =>
   clips.map((clip) =>
     clip.id === clipId
-      ? normalizeClip({ ...clip, ...updates, updatedAt: new Date() })
+      ? normalizeClip({
+          ...clip,
+          ...translateLegacyClipUpdates(clip, updates),
+          updatedAt: new Date(),
+        })
       : clip,
   );
+
+const translateLegacyClipUpdates = (
+  clip: TimelineClip,
+  updates: Partial<TimelineClip>,
+) => {
+  const nextUpdates = { ...updates };
+  const hasLegacyStart =
+    updates.start !== undefined || updates.sourceStart !== undefined;
+  const hasLegacyEnd = updates.end !== undefined || updates.sourceEnd !== undefined;
+  const hasLegacyOffset = updates.startOffset !== undefined;
+  const nextPlaybackRate =
+    updates.playbackRate !== undefined && updates.playbackRate > 0
+      ? updates.playbackRate
+      : getClipPlaybackRate(clip);
+  const nextSourceStart = updates.sourceStart ?? updates.start ?? getClipSourceStart(clip);
+  const nextSourceEnd = updates.sourceEnd ?? updates.end ?? getClipSourceEnd(clip);
+  const nextStartOffset = updates.startOffset ?? clip.startOffset;
+
+  if (updates.start !== undefined && updates.sourceStart === undefined) {
+    nextUpdates.sourceStart = updates.start;
+  }
+
+  if (updates.end !== undefined && updates.sourceEnd === undefined) {
+    nextUpdates.sourceEnd = updates.end;
+  }
+
+  if (
+    updates.timelineStart === undefined &&
+    (hasLegacyStart || hasLegacyOffset)
+  ) {
+    nextUpdates.timelineStart = nextStartOffset + nextSourceStart;
+  }
+
+  if (
+    updates.timelineDuration === undefined &&
+    (hasLegacyStart || hasLegacyEnd)
+  ) {
+    nextUpdates.timelineDuration = Math.max(0, nextSourceEnd - nextSourceStart) / nextPlaybackRate;
+  }
+
+  return nextUpdates;
+};
 
 export const normalizeClip = (clip: TimelineClip): TimelineClip =>
   createClip({

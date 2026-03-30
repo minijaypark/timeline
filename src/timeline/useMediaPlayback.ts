@@ -62,6 +62,35 @@ export const useMediaPlayback = ({
   );
   const soloTrackIds = useMemo(() => getSoloTrackIds(tracks), [tracks]);
 
+  const cleanupClipResources = useCallback((clipId: string) => {
+    const element = mediaRefs.current[clipId];
+    if (element && !element.paused) {
+      element.pause();
+    }
+
+    const gainNode = gainNodesRef.current[clipId];
+    if (gainNode) {
+      gainNode.gain.value = 0;
+    }
+
+    const sourceNode = sourceNodesRef.current[clipId];
+    if (sourceNode) {
+      sourceNode.disconnect();
+    }
+    if (gainNode) {
+      gainNode.disconnect();
+    }
+
+    audioGraphsRef.current = audioGraphsRef.current.filter(
+      (graph) =>
+        graph.sourceNode !== sourceNode || graph.gainNode !== gainNode,
+    );
+
+    delete mediaRefs.current[clipId];
+    delete sourceNodesRef.current[clipId];
+    delete gainNodesRef.current[clipId];
+  }, []);
+
   const isClipAudible = useCallback(
     (clip: TimelineClip) => {
       const track = tracksById.get(clip.trackId);
@@ -75,15 +104,14 @@ export const useMediaPlayback = ({
 
   useEffect(
     () => () => {
-      for (const graph of audioGraphsRef.current) {
-        graph.sourceNode.disconnect();
-        graph.gainNode.disconnect();
+      for (const clipId of Object.keys(mediaRefs.current)) {
+        cleanupClipResources(clipId);
       }
       if (audioContextRef.current) {
         void audioContextRef.current.close();
       }
     },
-    [],
+    [cleanupClipResources],
   );
 
   useEffect(() => {
@@ -95,18 +123,13 @@ export const useMediaPlayback = ({
       }
 
       const element = mediaRefs.current[clipId];
-      if (element && !element.paused) {
-        element.pause();
+      if (!element && !sourceNodesRef.current[clipId] && !gainNodesRef.current[clipId]) {
+        continue;
       }
-      const gainNode = gainNodesRef.current[clipId];
-      if (gainNode) {
-        gainNode.gain.value = 0;
-      }
-      delete mediaRefs.current[clipId];
-      delete sourceNodesRef.current[clipId];
-      delete gainNodesRef.current[clipId];
+
+      cleanupClipResources(clipId);
     }
-  }, [clips]);
+  }, [cleanupClipResources, clips]);
 
   useEffect(() => {
     const ensureAudioGraph = (clipId: string, element: HTMLMediaElement) => {
@@ -220,14 +243,14 @@ export const useMediaPlayback = ({
       }
 
       const previousGainNode = gainNodesRef.current[clipId];
-      if (previousGainNode) {
-        previousGainNode.gain.value = 0;
+      if (previousElement || previousGainNode) {
+        cleanupClipResources(clipId);
       }
-      delete sourceNodesRef.current[clipId];
-      delete gainNodesRef.current[clipId];
-      mediaRefs.current[clipId] = element;
+      if (element) {
+        mediaRefs.current[clipId] = element;
+      }
     },
-    [],
+    [cleanupClipResources],
   );
 
   return {
